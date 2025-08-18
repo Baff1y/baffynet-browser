@@ -1,0 +1,38 @@
+ {
+  "name": "baffynet",
+  "version": "1.0.0",
+  "homepage": "https://github.com/aaboba/baffynet",
+  "author": {
+    "name": "aaboba",
+    "email": "aaboba@example.com"
+  },
+  "main": "main.js",
+  "description": "Браузер BaffyNet, версия 4.0!",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^37.2.4",
+    "electron-builder": "^24.6.3"
+  },
+  "build": {
+    "appId": "com.baffynet.browser",
+    "win": {
+      "icon": "public/icon.ico",
+      "target": "nsis"
+    },
+    "linux": {
+      "icon": "public/icon.png",
+      "target": [
+        "deb",
+        "rpm",
+        "AppImage"
+      ]
+    },
+    "mac": {
+      "icon": "public/icon.icns",
+      "target": "dmg"
+    }
+  }
+}
