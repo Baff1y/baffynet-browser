@@ -1,16 +1,16 @@
  {
   "name": "baffynet",
-  "version": "1.0.0",
+  "version": "5.5.0",
   "homepage": "https://github.com/aaboba/baffynet",
   "author": {
     "name": "aaboba",
     "email": "aaboba@example.com"
   },
   "main": "main.js",
-  "description": "Браузер BaffyNet, версия 4.0!",
+  "description": "Браузер BaffyNet, версия 5.5!",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --linux"
+    "build": "electron-builder --windows"
   },
   "devDependencies": {
     "electron": "^37.2.4",
