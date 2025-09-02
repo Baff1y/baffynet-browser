@@ -17,12 +17,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onReloadPage: (callback) => ipcRenderer.on('reload-page', callback),
   onGoBack: (callback) => ipcRenderer.on('go-back', callback),
   onGoForward: (callback) => ipcRenderer.on('go-forward', callback),
-  onUndoAction: (callback) => ipcRenderer.on('undo-action', callback),
-  onOpenPrivacyNet: (callback) => ipcRenderer.on('open-privacynet', callback),
-  // Новые API для управления масштабом
-  onChangeZoomLevel: (callback) => ipcRenderer.on('change-zoom-level', callback),
-  onResetZoomLevel: (callback) => ipcRenderer.on('reset-zoom-level', callback),
-  // Новые методы для отправки команд масштабирования
-  changeZoomLevel: (tabId, delta) => ipcRenderer.send('change-zoom-level', {tabId, delta}),
-  resetZoomLevel: (tabId) => ipcRenderer.send('reset-zoom-level', tabId)
-})
+  onUndoAction: (callback) => ipcRenderer.on('undo-action', callback)
+})  

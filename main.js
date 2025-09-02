@@ -1,6 +1,5 @@
 const { app, BrowserWindow, Menu, ipcMain } = require('electron')
 const path = require('path')
-const { exec } = require('child_process')
 
 let mainWindow
 
@@ -65,16 +64,16 @@ function createWindow() {
       mainWindow.webContents.send('switch-to-tab', parseInt(input.key) - 1)
     }
 
-    // Открытие PrivacyNet (Ctrl+M / Ctrl+Ь)
+    // Запуск PrivacyNet (Ctrl+M / Ctrl+Ь)
     if (input.control && (input.key.toLowerCase() === 'm' || input.key === 'ь')) {
       event.preventDefault()
-      mainWindow.webContents.send('open-privacynet')
-    }
-
-    // Сброс масштаба (Ctrl+0)
-    if (input.control && input.key === '0') {
-      event.preventDefault()
-      mainWindow.webContents.send('reset-zoom')
+      const { exec } = require('child_process')
+      const privacynetPath = path.join(__dirname, 'privacynet', 'privacynet.exe')
+      exec(privacynetPath, (error) => {
+        if (error) {
+          console.error('Ошибка при запуске PrivacyNet:', error)
+        }
+      })
     }
   })
 
@@ -83,7 +82,7 @@ function createWindow() {
 
 app.whenReady().then(createWindow)
 
-ipcMain.on('create-new-tab', (event, url = 'https://baffynet.rf.gd/') => {
+ipcMain.on('create-new-tab', (event, url = 'https://baffynet.rf.gd/readme.html') => {
   mainWindow.webContents.send('create-new-tab', url)
 })
 
@@ -125,23 +124,6 @@ ipcMain.on('check-tabs-count', (event, count) => {
   }
 })
 
-ipcMain.on('open-privacynet', () => {
-  const privacynetPath = path.join(__dirname, 'privacynet', 'privacynet.exe')
-  exec(privacynetPath, (error) => {
-    if (error) {
-      console.error('Ошибка при запуске PrivacyNet:', error)
-    }
-  })
+ipcMain.on('save-search-engine', (event, template) => {
+  localStorage.setItem('searchEngineTemplate', template)
 })
-
-
-// Новый обработчик для изменения масштаба
-ipcMain.on('change-zoom-level', (event, {tabId, delta}) => {
-  mainWindow.webContents.send('change-zoom-level', {tabId, delta})
-})
-
-// Новый обработчик для сброса масштаба
-ipcMain.on('reset-zoom-level', (event, tabId) => {
-  mainWindow.webContents.send('reset-zoom-level', tabId)
-})
-console.log("BaffyNet 5.5 is started  ")
