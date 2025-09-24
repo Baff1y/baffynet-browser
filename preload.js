@@ -17,5 +17,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onReloadPage: (callback) => ipcRenderer.on('reload-page', callback),
   onGoBack: (callback) => ipcRenderer.on('go-back', callback),
   onGoForward: (callback) => ipcRenderer.on('go-forward', callback),
-  onUndoAction: (callback) => ipcRenderer.on('undo-action', callback)
-})  
+  onUndoAction: (callback) => ipcRenderer.on('undo-action', callback),
+  
+  // Новые методы для расширений
+  openExtensionsFolder: () => ipcRenderer.send('open-extensions-folder'),
+  showExtensionPopup: (extensionId) => ipcRenderer.send('show-extension-popup', extensionId),
+  onExtensionsLoaded: (callback) => ipcRenderer.on('extensions-loaded', callback),
+  onOpenExtensionPopup: (callback) => ipcRenderer.on('open-extension-popup', callback),
+  reloadExtensions: () => ipcRenderer.send('reload-extensions')
+})
