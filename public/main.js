@@ -3,10 +3,16 @@ const webviewsContainer = document.getElementById('webviews-container')
 const urlBar = document.getElementById('url-bar')
 let tabCounter = 1
 let closedTabsHistory = []
+let extensionsList = []
 
 // Загружаем стартовую страницу из настроек
 const defaultStartPage = localStorage.getItem('startPage') || 'https://baffynet.rf.gd'
 createNewTab(defaultStartPage)
+
+// Создаем кнопку расширений после загрузки
+setTimeout(() => {
+  createExtensionsButton()
+}, 1000)
 
 function createNewTab(url) {
   const finalUrl = url || localStorage.getItem('newTabPage') || 'https://baffynet.rf.gd'
@@ -16,7 +22,7 @@ function createNewTab(url) {
   tab.className = 'tab'
   tab.dataset.tabId = tabId
   tab.innerHTML = `
-    <img class="tab-favicon" src="https://www.google.com/favicon.ico">
+    <img class="tab-favicon" src="https://i.ibb.co/v4PmyTNq/image.png">
     <span class="tab-title">${finalUrl.includes('example.com') ? 'Example' : 'Новая вкладка'}</span>
     <span class="tab-close" data-tab-id="${tabId}">×</span>
   `
@@ -199,6 +205,195 @@ function showUrlPrompt() {
   showUrlPromptModal()
 }
 
+// Система расширений
+function createExtensionsButton() {
+  const toolbar = document.getElementById('toolbar')
+  const extensionsBtn = document.createElement('button')
+  extensionsBtn.id = 'extensions-btn'
+  extensionsBtn.innerHTML = '⧉'
+  extensionsBtn.title = 'Расширения'
+  extensionsBtn.style.marginLeft = '10px'
+  
+  extensionsBtn.addEventListener('click', showExtensionsMenu)
+  
+  // Вставляем кнопку после url-bar
+  urlBar.parentNode.insertBefore(extensionsBtn, urlBar.nextSibling)
+}
+
+function showExtensionsMenu() {
+  // Создаем меню расширений
+  const menu = document.createElement('div')
+  menu.className = 'extensions-menu'
+  menu.style.cssText = `
+    position: absolute;
+    top: 40px;
+    right: 10px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    min-width: 250px;
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  `
+  
+  const title = document.createElement('h3')
+  title.textContent = 'Расширения'
+  title.style.margin = '0 0 10px 0'
+  title.style.color = 'var(--text-color)'
+  menu.appendChild(title)
+  
+  // Кнопка открытия папки
+  const openFolderBtn = document.createElement('button')
+  openFolderBtn.textContent = '/__/ Открыть папку расширений'
+  openFolderBtn.style.width = '100%'
+  openFolderBtn.style.marginBottom = '10px'
+  openFolderBtn.onclick = () => {
+    if (window.electronAPI) window.electronAPI.openExtensionsFolder()
+    menu.remove()
+  }
+  menu.appendChild(openFolderBtn)
+  
+  // Кнопка перезагрузки
+  const reloadBtn = document.createElement('button')
+  reloadBtn.textContent = '⟳ Перезагрузить расширения'
+  reloadBtn.style.width = '100%'
+  reloadBtn.style.marginBottom = '10px'
+  reloadBtn.onclick = () => {
+    if (window.electronAPI) window.electronAPI.reloadExtensions()
+    menu.remove()
+  }
+  menu.appendChild(reloadBtn)
+  
+  // Список расширений
+  if (extensionsList.length === 0) {
+    const noExtensions = document.createElement('div')
+    noExtensions.textContent = 'Расширения не найдены'
+    noExtensions.style.color = 'var(--text-color)'
+    noExtensions.style.textAlign = 'center'
+    noExtensions.style.padding = '20px'
+    menu.appendChild(noExtensions)
+  } else {
+    extensionsList.forEach(ext => {
+      const extItem = document.createElement('div')
+      extItem.className = 'extension-item'
+      extItem.style.cssText = `
+        padding: 8px;
+        margin: 5px 0;
+        background: var(--tab-bg);
+        border-radius: 4px;
+        cursor: pointer;
+      `
+      extItem.innerHTML = `
+        <div style="font-weight: bold; color: var(--text-color)">${ext.name}</div>
+        <div style="font-size: 12px; color: #888">${ext.version}</div>
+        ${ext.description ? `<div style="font-size: 11px; color: #666; margin-top: 4px">${ext.description}</div>` : ''}
+      `
+      
+      extItem.onclick = () => {
+        if (ext.popup && window.electronAPI) {
+          window.electronAPI.showExtensionPopup(ext.id)
+        }
+        menu.remove()
+      }
+      
+      menu.appendChild(extItem)
+    })
+  }
+  
+  // Закрытие при клике вне меню
+  const closeMenu = (e) => {
+    if (!menu.contains(e.target) && e.target.id !== 'extensions-btn') {
+      menu.remove()
+      document.removeEventListener('click', closeMenu)
+    }
+  }
+  
+  setTimeout(() => {
+    document.addEventListener('click', closeMenu)
+  }, 100)
+  
+  document.body.appendChild(menu)
+}
+
+// Popup для расширений
+function showExtensionPopup(extension) {
+  const popup = document.createElement('div')
+  popup.className = 'extension-popup'
+  popup.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0;
+    z-index: 1001;
+    min-width: 300px;
+    max-width: 400px;
+    max-height: 500px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  `
+    
+  const header = document.createElement('div')
+  header.style.cssText = `
+    padding: 12px;
+    background: var(--tab-active-bg);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  `
+  
+  const title = document.createElement('div')
+  title.textContent = extension.name
+  title.style.fontWeight = 'bold'
+  title.style.color = 'var(--text-color)'
+  
+  const closeBtn = document.createElement('button')
+  closeBtn.textContent = '×'
+  closeBtn.style.background = 'none'
+  closeBtn.style.border = 'none'
+  closeBtn.style.fontSize = '18px'
+  closeBtn.style.cursor = 'pointer'
+  closeBtn.style.color = 'var(--text-color)'
+  closeBtn.onclick = () => popup.remove()
+  
+  header.appendChild(title)
+  header.appendChild(closeBtn)
+  popup.appendChild(header)
+  
+  const iframe = document.createElement('iframe')
+  iframe.src = extension.popupUrl
+  iframe.style.width = '100%'
+  iframe.style.height = '400px'
+  iframe.style.border = 'none'
+  popup.appendChild(iframe)
+  
+  // Закрытие при клике вне popup
+  const overlay = document.createElement('div')
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+  `
+  overlay.onclick = () => {
+    popup.remove()
+    overlay.remove()
+  }
+  
+  document.body.appendChild(overlay)
+  document.body.appendChild(popup)
+}
+
 // Загрузка темы из localStorage (по умолчанию темная)
 document.body.classList.add(localStorage.getItem('theme') === 'light' ? 'light-theme' : 'dark-theme')
 
@@ -262,7 +457,7 @@ if (window.electronAPI) {
   })
 
   window.electronAPI.onOpenUrlPrompt(() => {
-    showUrlPrompt()
+    showUrlPrompt() 
   })
 
   window.electronAPI.onOpenSearchEnginePrompt(() => {
@@ -279,5 +474,15 @@ if (window.electronAPI) {
 
   window.electronAPI.onSwitchToTab((event, index) => {
     switchToTabByIndex(index)
+  })
+
+  // Обработчики расширений
+  window.electronAPI.onExtensionsLoaded((event, extensions) => {
+    extensionsList = extensions
+    console.log('Расширения загружены:', extensions)
+  })
+
+  window.electronAPI.onOpenExtensionPopup((event, extension) => {
+    showExtensionPopup(extension)
   })
 }
