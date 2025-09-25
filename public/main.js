@@ -267,6 +267,17 @@ function showExtensionsMenu() {
   }
   menu.appendChild(reloadBtn)
   
+  // Кнопка открытия магазина расширений
+  const shopBtn = document.createElement('button')
+  shopBtn.textContent = '(/) Магазин расширений'
+  shopBtn.style.width = '100%'
+  shopBtn.style.marginBottom = '10px'
+  shopBtn.onclick = () => {
+    createNewTab('https://baffynet.rf.gd/shop.html')
+    menu.remove()
+  }
+  menu.appendChild(shopBtn)
+  
   // Список расширений
   if (extensionsList.length === 0) {
     const noExtensions = document.createElement('div')
@@ -474,6 +485,10 @@ if (window.electronAPI) {
 
   window.electronAPI.onSwitchToTab((event, index) => {
     switchToTabByIndex(index)
+  })
+
+  window.electronAPI.onOpenExtensionsShop(() => {
+    createNewTab('https://baffynet.rf.gd/shop.html')
   })
 
   // Обработчики расширений
