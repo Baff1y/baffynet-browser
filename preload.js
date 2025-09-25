@@ -24,5 +24,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showExtensionPopup: (extensionId) => ipcRenderer.send('show-extension-popup', extensionId),
   onExtensionsLoaded: (callback) => ipcRenderer.on('extensions-loaded', callback),
   onOpenExtensionPopup: (callback) => ipcRenderer.on('open-extension-popup', callback),
-  reloadExtensions: () => ipcRenderer.send('reload-extensions')
+  reloadExtensions: () => ipcRenderer.send('reload-extensions'),
+  
+  // Новый метод для магазина расширений
+  onOpenExtensionsShop: (callback) => ipcRenderer.on('open-extensions-shop', callback)
 })
