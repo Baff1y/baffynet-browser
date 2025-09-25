@@ -202,7 +202,3 @@ ipcMain.on('check-tabs-count', (event, count) => {
     mainWindow.close();
   }
 });
-
-ipcMain.on('save-search-engine', (event, template) => {
-  localStorage.setItem('searchEngineTemplate', template);
-});

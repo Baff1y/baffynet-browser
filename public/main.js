@@ -67,7 +67,7 @@ function updateTabFavicon(tabId, faviconUrl) {
 function updateTabTitle(tabId, title) {
   const tabTitle = document.querySelector(`.tab[data-tab-id="${tabId}"] .tab-title`)
   if (tabTitle) tabTitle.textContent = title || 'Новая вкладка'
-  
+
   if (window.electronAPI) {
     window.electronAPI.updateTitle(title)
   }
@@ -185,11 +185,7 @@ function showSearchEnginePromptModal() {
   document.getElementById('save-search-engine').onclick = () => {
     const template = searchEngineInput.value.trim()
     if (template.includes('${encodeURIComponent(url)}')) {
-      if (window.electronAPI) {
-        window.electronAPI.saveSearchEngine(template)
-      } else {
-        localStorage.setItem('searchEngineTemplate', template)
-      }
+      localStorage.setItem('searchEngineTemplate', template)
       modal.classList.add('hidden')
     } else {
       alert('Шаблон должен содержать ${encodeURIComponent(url)} для подстановки поискового запроса')
@@ -213,9 +209,9 @@ function createExtensionsButton() {
   extensionsBtn.innerHTML = '⧉'
   extensionsBtn.title = 'Расширения'
   extensionsBtn.style.marginLeft = '10px'
-  
+
   extensionsBtn.addEventListener('click', showExtensionsMenu)
-  
+
   // Вставляем кнопку после url-bar
   urlBar.parentNode.insertBefore(extensionsBtn, urlBar.nextSibling)
 }
@@ -238,13 +234,13 @@ function showExtensionsMenu() {
     z-index: 1000;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   `
-  
+
   const title = document.createElement('h3')
   title.textContent = 'Расширения'
   title.style.margin = '0 0 10px 0'
   title.style.color = 'var(--text-color)'
   menu.appendChild(title)
-  
+
   // Кнопка открытия папки
   const openFolderBtn = document.createElement('button')
   openFolderBtn.textContent = '/__/ Открыть папку расширений'
@@ -255,7 +251,7 @@ function showExtensionsMenu() {
     menu.remove()
   }
   menu.appendChild(openFolderBtn)
-  
+
   // Кнопка перезагрузки
   const reloadBtn = document.createElement('button')
   reloadBtn.textContent = '⟳ Перезагрузить расширения'
@@ -266,7 +262,7 @@ function showExtensionsMenu() {
     menu.remove()
   }
   menu.appendChild(reloadBtn)
-  
+
   // Кнопка открытия магазина расширений
   const shopBtn = document.createElement('button')
   shopBtn.textContent = '(/) Магазин расширений'
@@ -277,7 +273,7 @@ function showExtensionsMenu() {
     menu.remove()
   }
   menu.appendChild(shopBtn)
-  
+
   // Список расширений
   if (extensionsList.length === 0) {
     const noExtensions = document.createElement('div')
@@ -302,18 +298,18 @@ function showExtensionsMenu() {
         <div style="font-size: 12px; color: #888">${ext.version}</div>
         ${ext.description ? `<div style="font-size: 11px; color: #666; margin-top: 4px">${ext.description}</div>` : ''}
       `
-      
+
       extItem.onclick = () => {
         if (ext.popup && window.electronAPI) {
           window.electronAPI.showExtensionPopup(ext.id)
         }
         menu.remove()
       }
-      
+
       menu.appendChild(extItem)
     })
   }
-  
+
   // Закрытие при клике вне меню
   const closeMenu = (e) => {
     if (!menu.contains(e.target) && e.target.id !== 'extensions-btn') {
@@ -321,11 +317,11 @@ function showExtensionsMenu() {
       document.removeEventListener('click', closeMenu)
     }
   }
-  
+
   setTimeout(() => {
     document.addEventListener('click', closeMenu)
   }, 100)
-  
+
   document.body.appendChild(menu)
 }
 
@@ -349,7 +345,7 @@ function showExtensionPopup(extension) {
     overflow: hidden;
     box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   `
-    
+
   const header = document.createElement('div')
   header.style.cssText = `
     padding: 12px;
@@ -359,12 +355,12 @@ function showExtensionPopup(extension) {
     justify-content: space-between;
     align-items: center;
   `
-  
+
   const title = document.createElement('div')
   title.textContent = extension.name
   title.style.fontWeight = 'bold'
   title.style.color = 'var(--text-color)'
-  
+
   const closeBtn = document.createElement('button')
   closeBtn.textContent = '×'
   closeBtn.style.background = 'none'
@@ -373,18 +369,18 @@ function showExtensionPopup(extension) {
   closeBtn.style.cursor = 'pointer'
   closeBtn.style.color = 'var(--text-color)'
   closeBtn.onclick = () => popup.remove()
-  
+
   header.appendChild(title)
   header.appendChild(closeBtn)
   popup.appendChild(header)
-  
+
   const iframe = document.createElement('iframe')
   iframe.src = extension.popupUrl
   iframe.style.width = '100%'
   iframe.style.height = '400px'
   iframe.style.border = 'none'
   popup.appendChild(iframe)
-  
+
   // Закрытие при клике вне popup
   const overlay = document.createElement('div')
   overlay.style.cssText = `
@@ -400,7 +396,7 @@ function showExtensionPopup(extension) {
     popup.remove()
     overlay.remove()
   }
-  
+
   document.body.appendChild(overlay)
   document.body.appendChild(popup)
 }
@@ -468,7 +464,7 @@ if (window.electronAPI) {
   })
 
   window.electronAPI.onOpenUrlPrompt(() => {
-    showUrlPrompt() 
+    showUrlPrompt()
   })
 
   window.electronAPI.onOpenSearchEnginePrompt(() => {
