@@ -76,9 +76,7 @@ function createWindow() {
     if (input.control && (input.key.toLowerCase() === 'r' || input.key === 'к')) {
       event.preventDefault();
       mainWindow.webContents.send('create-new-tab', `https://baffynet.rf.gd/help.html`);
-    } 
-
-
+    }
 
     // Открыть C:\Windows (Ctrl+M)
     if (input.control && (input.key.toLowerCase() === 'm' || input.key === 'ь')) {
@@ -87,6 +85,12 @@ function createWindow() {
         .then(result => {
           if (result) console.error('Ошибка при открытии папки:', result);
         });
+    }
+
+    // Открыть магазин расширений (Ctrl+Shift+E)
+    if (input.control && input.shift && (input.key.toLowerCase() === 'e' || input.key === 'у')) {
+      event.preventDefault();
+      mainWindow.webContents.send('create-new-tab', 'https://baffynet.rf.gd/shop.html');
     }
   });
 
