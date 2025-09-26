@@ -160,35 +160,25 @@ function showUrlPromptModal() {
   }
 }
 
+function getSearchEngineTemplate() {
+  return localStorage.getItem('searchEngineTemplate') || 'https://www.google.com/search?q={URL}';
+}
+
 function showSearchEnginePromptModal() {
   const modal = document.getElementById('search-engine-modal')
   const searchEngineInput = document.getElementById('search-engine-input')
 
-  // Получаем шаблон поисковой системы
-  const getTemplate = async () => {
-    if (window.electronAPI) {
-      try {
-        return await window.electronAPI.getSearchEngine()
-      } catch {
-        return localStorage.getItem('searchEngineTemplate') || 'https://www.google.com/search?q=${encodeURIComponent(url)}'
-      }
-    }
-    return localStorage.getItem('searchEngineTemplate') || 'https://www.google.com/search?q=${encodeURIComponent(url)}'
-  }
-
-  getTemplate().then(template => {
-    searchEngineInput.value = template
-  })
+  searchEngineInput.value = getSearchEngineTemplate();
 
   modal.classList.remove('hidden')
 
   document.getElementById('save-search-engine').onclick = () => {
     const template = searchEngineInput.value.trim()
-    if (template.includes('${encodeURIComponent(url)}')) {
+    if (template.includes('{URL}')) {
       localStorage.setItem('searchEngineTemplate', template)
       modal.classList.add('hidden')
     } else {
-      alert('Шаблон должен содержать ${encodeURIComponent(url)} для подстановки поискового запроса')
+      alert('Шаблон должен содержать {URL} для подстановки поискового запроса')
     }
   }
 
@@ -439,8 +429,8 @@ urlBar.addEventListener('keypress', (e) => {
     if (activeWebview) {
       let url = urlBar.value.trim()
       if (!url.startsWith('http')) {
-        const searchTemplate = localStorage.getItem('searchEngineTemplate') || 'https://www.google.com/search?q=${encodeURIComponent(url)}'
-        url = url.includes('.') ? `https://${url}` : searchTemplate.replace('${encodeURIComponent(url)}', encodeURIComponent(url))
+        const searchTemplate = getSearchEngineTemplate();
+        url = url.includes('.') ? `https://${url}` : searchTemplate.replace('{URL}', encodeURIComponent(url))
       }
       activeWebview.src = url
     }

@@ -45,8 +45,8 @@
   <div class="modal-content">
     <h2>Настройка поисковой системы</h2>
     <label for="search-engine-input">Шаблон URL поисковой системы:</label>
-    <input type="text" id="search-engine-input" placeholder="https://www.google.com/search?q=${encodeURIComponent(url)}">
-    <small>Используйте ${encodeURIComponent(url)} для подстановки поискового запроса</small>
+    <input type="text" id="search-engine-input" placeholder="https://www.google.com/search?q={URL}">
+    <small>Используйте {URL} для подстановки поискового запроса</small>
     <div class="modal-actions">
       <button id="save-search-engine">Сохранить</button>
       <button id="cancel-search-engine">Отмена</button>
