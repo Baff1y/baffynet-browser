@@ -5,6 +5,12 @@ let tabCounter = 1
 let closedTabsHistory = []
 let extensionsList = []
 
+const searchEngineTemplates = {
+  "google": 'https://www.google.com/search?q={URL}',
+  "duckduckgo": 'https://duckduckgo.com/?q={URL}&t=h_',
+  "bing": 'https://www.bing.com/search?q={URL}'
+}
+
 // Загружаем стартовую страницу из настроек
 const defaultStartPage = localStorage.getItem('startPage') || 'https://baffynet.rf.gd'
 createNewTab(defaultStartPage)
@@ -436,6 +442,33 @@ urlBar.addEventListener('keypress', (e) => {
     }
   }
 })
+
+document.querySelector(".search-engine-select").addEventListener('change', (e) => {
+  const custom = document.querySelector("#search-engine-modal .modal-content>.custom");
+  const value = e.target.value;
+
+  if (value === "custom") {
+    custom.classList.remove("hidden")
+  } else {
+    custom.classList.add("hidden")
+  }
+
+  const searchEngineInput = document.getElementById('search-engine-input');
+
+  if (searchEngineTemplates[value]) {
+    searchEngineInput.value = searchEngineTemplates[value];
+  }
+});
+
+const searchEngineSelect = document.querySelector(".search-engine-select");
+const chosenSearchEngineTemplate = Object.keys(searchEngineTemplates).find(key => searchEngineTemplates[key] === getSearchEngineTemplate());
+
+searchEngineSelect.value = chosenSearchEngineTemplate || "custom";
+
+document.querySelector(".search-engine-select").addEventListener('load', (e) => {
+  console.log('meow', e);
+});
+
 
 // Обработчики горячих клавиш
 if (window.electronAPI) {

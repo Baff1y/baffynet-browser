@@ -183,8 +183,8 @@ webview {
   z-index: 999;
 }
 
-.modal.hidden {
-  display: none;
+.hidden {
+  display: none !important;
 }
 
 .modal-content {
@@ -210,4 +210,9 @@ webview {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+#search-engine-modal .custom {
+  display: flex;
+  flex-direction: column;
 }
