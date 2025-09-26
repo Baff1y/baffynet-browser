@@ -12,7 +12,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onChangeNewTabPage: (callback) => ipcRenderer.on('change-new-tab-page', callback),
   updateTitle: (title) => ipcRenderer.send('update-title', title),
   checkTabsCount: (count) => ipcRenderer.send('check-tabs-count', count),
-  getSearchEngine: () => localStorage.getItem('searchEngineTemplate') || 'https://www.google.com/search?q=${encodeURIComponent(url)}',
   onReloadPage: (callback) => ipcRenderer.on('reload-page', callback),
   onGoBack: (callback) => ipcRenderer.on('go-back', callback),
   onGoForward: (callback) => ipcRenderer.on('go-forward', callback),
