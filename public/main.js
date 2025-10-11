@@ -14,6 +14,55 @@ setTimeout(() => {
   createExtensionsButton()
 }, 1000)
 
+// Инициализация темы при загрузке
+initializeTheme()
+
+function initializeTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'dark'
+  document.body.classList.toggle('dark-theme', savedTheme === 'dark')
+  document.body.classList.toggle('light-theme', savedTheme === 'light')
+  updateThemeVariables(savedTheme)
+}
+
+function toggleTheme() {
+  const isDark = document.body.classList.contains('dark-theme')
+  const newTheme = isDark ? 'light' : 'dark'
+  
+  document.body.classList.toggle('dark-theme', !isDark)
+  document.body.classList.toggle('light-theme', isDark)
+  
+  localStorage.setItem('theme', newTheme)
+  updateThemeVariables(newTheme)
+  
+  console.log(`Тема изменена на: ${newTheme}`)
+}
+
+function updateThemeVariables(theme) {
+  const root = document.documentElement
+  
+  if (theme === 'light') {
+    root.style.setProperty('--bg-color', '#f0f0f0')
+    root.style.setProperty('--text-color', '#333333')
+    root.style.setProperty('--panel-bg', '#ffffff')
+    root.style.setProperty('--tab-bg', '#e0e0e0')
+    root.style.setProperty('--tab-active-bg', '#d0d0d0')
+    root.style.setProperty('--url-bar-bg', '#ffffff')
+    root.style.setProperty('--button-bg', '#e8e8e8')
+    root.style.setProperty('--button-hover', '#d8d8d8')
+    root.style.setProperty('--border-color', '#cccccc')
+  } else {
+    root.style.setProperty('--bg-color', '#25242b')
+    root.style.setProperty('--text-color', '#f0f0f0')
+    root.style.setProperty('--panel-bg', '#353440')
+    root.style.setProperty('--tab-bg', '#353440')
+    root.style.setProperty('--tab-active-bg', '#4a475f')
+    root.style.setProperty('--url-bar-bg', '#353440')
+    root.style.setProperty('--button-bg', '#353440')
+    root.style.setProperty('--button-hover', '#4a475f')
+    root.style.setProperty('--border-color', '#3a3944')
+  }
+}
+
 function createNewTab(url) {
   const finalUrl = url || localStorage.getItem('newTabPage') || 'https://baffynet.rf.gd'
   const tabId = tabCounter++
@@ -125,13 +174,6 @@ function undoCloseTab() {
   }
 }
 
-function toggleTheme() {
-  const isDark = !document.body.classList.contains('dark-theme')
-  document.body.classList.toggle('dark-theme', isDark)
-  document.body.classList.toggle('light-theme', !isDark)
-  localStorage.setItem('theme', isDark ? 'dark' : 'light')
-}
-
 function switchToTabByIndex(index) {
   const tabs = Array.from(document.querySelectorAll('.tab:not(#new-tab)'))
   if (index >= 0 && index < tabs.length) {
@@ -194,16 +236,57 @@ function showUrlPrompt() {
 // Система расширений
 function createExtensionsButton() {
   const toolbar = document.getElementById('toolbar')
+  
+  // Создаем контейнер для кнопок расширений и загрузок
+  const rightButtonsContainer = document.createElement('div')
+  rightButtonsContainer.id = 'right-buttons'
+  rightButtonsContainer.style.cssText = `
+    display: flex;
+    gap: 5px;
+    margin-left: auto;
+    align-items: center;
+  `
+
+  // Кнопка расширений
   const extensionsBtn = document.createElement('button')
   extensionsBtn.id = 'extensions-btn'
   extensionsBtn.innerHTML = '⧉'
   extensionsBtn.title = 'Расширения'
-  extensionsBtn.style.marginLeft = '10px'
+  extensionsBtn.style.cssText = `
+    padding: 6px 12px;
+    background: var(--button-bg);
+    color: var(--text-color);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+  `
 
   extensionsBtn.addEventListener('click', showExtensionsMenu)
 
-  // Вставляем кнопку после url-bar
-  urlBar.parentNode.insertBefore(extensionsBtn, urlBar.nextSibling)
+  // Кнопка загрузок (без счетчика)
+  const downloadsBtn = document.createElement('button')
+  downloadsBtn.id = 'downloads-btn'
+  downloadsBtn.innerHTML = '⭳'
+  downloadsBtn.title = 'Загрузки'
+  downloadsBtn.style.cssText = `
+    padding: 6px 12px;
+    background: var(--button-bg);
+    color: var(--text-color);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+  `
+
+  downloadsBtn.addEventListener('click', showDownloads)
+
+  // Добавляем кнопки в контейнер
+  rightButtonsContainer.appendChild(extensionsBtn)
+  rightButtonsContainer.appendChild(downloadsBtn)
+
+  // Вставляем контейнер в тулбар
+  toolbar.appendChild(rightButtonsContainer)
 }
 
 function showExtensionsMenu() {
@@ -391,8 +474,9 @@ function showExtensionPopup(extension) {
   document.body.appendChild(popup)
 }
 
-// Загрузка темы из localStorage (по умолчанию темная)
-document.body.classList.add(localStorage.getItem('theme') === 'light' ? 'light-theme' : 'dark-theme')
+function showDownloads() {
+  document.getElementById('downloads-panel').classList.remove('hidden');
+}
 
 // Обработчики кнопок
 document.getElementById('new-tab').addEventListener('click', () => {
