@@ -16,42 +16,207 @@
         <button type="button" id="forward">></button>
         <button type="button" id="reload">⟳</button>
         <input id="url-bar" type="text" placeholder="Введите URL или поисковой запрос...">
+        <!-- Кнопки расширений и загрузок добавятся сюда через JS -->
       </div>
     </div>
     <div id="webviews-container"></div>
   </div>
+
+  <div id="url-prompt-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Настройки URL</h2>
+      <label for="start-url">Стартовая страница:</label>
+      <input type="text" id="start-url" placeholder="https://example.com">
+      <label for="new-tab-url">Страница новой вкладки:</label>
+      <input type="text" id="new-tab-url" placeholder="https://example.com">
+      <div class="modal-actions">
+        <button id="save-url-settings">Сохранить</button>
+        <button id="cancel-url-settings">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="search-engine-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Настройка поисковой системы</h2>
+      <label for="search-engine-input">Шаблон URL поисковой системы:</label>
+      <input type="text" id="search-engine-input" placeholder="https://www.google.com/search?q={URL}">
+      <small>Используйте {URL} для подстановки поискового запроса</small>
+      <div class="modal-actions">
+        <button id="save-search-engine">Сохранить</button>
+        <button id="cancel-search-engine">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="downloads-panel" class="modal hidden">
+    <div class="modal-content" style="width: 500px; max-height: 600px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="margin: 0;">⭳ Менеджер загрузок</h2>
+        <button onclick="hideDownloads()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-color);">×</button>
+      </div>
+      
+      <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+        <button onclick="openDownloadFolder()" style="flex: 1;">/__/ Открыть папку</button>
+        <button onclick="clearCompletedDownloads()" style="flex: 1;">\_/ Очистить завершенные</button>
+      </div>
+      
+      <div id="downloads-list" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px;">
+        <!-- Сюда будут добавляться загрузки -->
+      </div>
+      
+      <div style="margin-top: 15px; text-align: center;">
+        <button onclick="hideDownloads()">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const script = document.createElement('script')
       script.src = 'main.js'
       document.body.appendChild(script)
     })
+
+    let downloads = new Map();
+    let activeDownloadsCount = 0;
+    
+    function showDownloads() {
+      document.getElementById('downloads-panel').classList.remove('hidden');
+    }
+    
+    function hideDownloads() {
+      document.getElementById('downloads-panel').classList.add('hidden');
+    }
+    
+    function openDownloadFolder() {
+      window.electronAPI.openDownloadFolder();
+    }
+    
+    function clearCompletedDownloads() {
+      const list = document.getElementById('downloads-list');
+      const completedItems = list.querySelectorAll('.download-complete, .download-error');
+      completedItems.forEach(item => item.remove());
+      updateDownloadsCount();
+    }
+    
+    function updateDownloadsCount() {
+      activeDownloadsCount = document.querySelectorAll('.download-active').length;
+      
+      // Обновляем стиль кнопки загрузок в тулбаре
+      const downloadsBtn = document.getElementById('downloads-btn');
+      if (downloadsBtn) {
+        if (activeDownloadsCount > 0) {
+          downloadsBtn.style.background = '#47a3ff';
+        } else {
+          downloadsBtn.style.background = 'var(--button-bg)';
+        }
+      }
+    }
+    
+    function cancelDownload(downloadId) {
+      window.electronAPI.cancelDownload(downloadId);
+      const item = document.getElementById(`download-${downloadId}`);
+      if (item) {
+        item.classList.remove('download-active');
+        item.classList.add('download-error');
+        item.querySelector('.download-status').textContent = '❌ Отменено';
+        updateDownloadsCount();
+      }
+    }
+    
+    window.electronAPI.onDownloadProgress((event, data) => {
+      let item = document.getElementById(`download-${data.id}`);
+      
+      if (!item) {
+        item = document.createElement('div');
+        item.id = `download-${data.id}`;
+        item.className = 'download-item download-active';
+        item.innerHTML = `
+          <div style="padding: 10px; border-bottom: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <div class="download-filename" style="font-weight: bold; flex: 1; font-size: 12px;">${data.filename}</div>
+              <div class="download-percent" style="font-weight: bold; margin-left: 10px;">0%</div>
+            </div>
+            <div style="background: var(--border-color); border-radius: 10px; margin: 5px 0; height: 20px; position: relative;">
+              <div class="download-progress-bar" style="background: #47a3ff; height: 100%; border-radius: 10px; width: 0%; 
+                       transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; 
+                       color: white; font-size: 12px; font-weight: bold;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #888;">
+              <div class="download-size">0 MB / 0 MB</div>
+              <div class="download-status">Загружается...</div>
+              <button onclick="cancelDownload('${data.id}')" style="padding: 2px 8px; font-size: 11px; background: #ff4444; color: white; border: none; border-radius: 3px;">Отмена</button>
+            </div>
+          </div>
+        `;
+        document.getElementById('downloads-list').prepend(item);
+      }
+      
+      const receivedMB = (data.received / (1024 * 1024)).toFixed(1);
+      const totalMB = (data.total / (1024 * 1024)).toFixed(1);
+      const speed = calculateSpeed(data);
+      
+      item.querySelector('.download-percent').textContent = `${data.progress}%`;
+      item.querySelector('.download-progress-bar').textContent = `${data.progress}%`;
+      item.querySelector('.download-progress-bar').style.width = `${data.progress}%`;
+      item.querySelector('.download-size').textContent = `${receivedMB} MB / ${totalMB} MB`;
+      item.querySelector('.download-status').textContent = `${speed}/s`;
+      
+      updateDownloadsCount();
+    });
+    
+    window.electronAPI.onDownloadComplete((event, data) => {
+      const item = document.getElementById(`download-${data.id}`);
+      if (item) {
+        item.classList.remove('download-active');
+        item.classList.add('download-complete');
+        item.querySelector('.download-status').innerHTML = '✅ <strong>Завершено</strong>';
+        item.querySelector('.download-progress-bar').style.background = '#4CAF50';
+        
+        const cancelBtn = item.querySelector('button');
+        if (cancelBtn) cancelBtn.remove();
+        
+        const openBtn = document.createElement('button');
+        openBtn.textContent = 'Открыть';
+        openBtn.onclick = () => shell.showItemInFolder(data.path);
+        openBtn.style = 'padding: 2px 8px; font-size: 11px; margin-left: 5px; background: #4CAF50; color: white; border: none; border-radius: 3px;';
+        item.querySelector('.download-status').appendChild(openBtn);
+        
+        updateDownloadsCount();
+      }
+    });
+    
+    window.electronAPI.onDownloadError((event, data) => {
+      const item = document.getElementById(`download-${data.id}`);
+      if (item) {
+        item.classList.remove('download-active');
+        item.classList.add('download-error');
+        item.querySelector('.download-status').textContent = '❌ Ошибка';
+        item.querySelector('.download-progress-bar').style.background = '#ff4444';
+        updateDownloadsCount();
+      }
+    });
+    
+    function calculateSpeed(data) {
+      const timeElapsed = (Date.now() - (data.startTime || Date.now())) / 1000;
+      const speed = data.received / (timeElapsed || 1);
+      
+      if (speed > 1024 * 1024) {
+        return (speed / (1024 * 1024)).toFixed(1) + ' MB';
+      } else {
+        return (speed / 1024).toFixed(1) + ' KB';
+      }
+    }
+
+    // Для совместимости с shell.showItemInFolder
+    const shell = {
+      showItemInFolder: (path) => {
+        // Эта функция будет работать через Electron API
+        window.electronAPI.openDownloadFolder();
+      }
+    };
   </script>
-  <div id="url-prompt-modal" class="modal hidden">
-  <div class="modal-content">
-    <h2>Настройки URL</h2>
-    <label for="start-url">Стартовая страница:</label>
-    <input type="text" id="start-url" placeholder="https://example.com">
-    <label for="new-tab-url">Страница новой вкладки:</label>
-    <input type="text" id="new-tab-url" placeholder="https://example.com">
-    <div class="modal-actions">
-      <button id="save-url-settings">Сохранить</button>
-      <button id="cancel-url-settings">Отмена</button>
-    </div>
-  </div>
-</div>
-<!-- Добавьте перед закрывающим </body> -->
-<div id="search-engine-modal" class="modal hidden">
-  <div class="modal-content">
-    <h2>Настройка поисковой системы</h2>
-    <label for="search-engine-input">Шаблон URL поисковой системы:</label>
-    <input type="text" id="search-engine-input" placeholder="https://www.google.com/search?q={URL}">
-    <small>Используйте {URL} для подстановки поискового запроса</small>
-    <div class="modal-actions">
-      <button id="save-search-engine">Сохранить</button>
-      <button id="cancel-search-engine">Отмена</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
