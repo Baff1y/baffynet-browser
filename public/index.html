@@ -180,7 +180,14 @@
         
         const openBtn = document.createElement('button');
         openBtn.textContent = 'Открыть';
-        openBtn.onclick = () => shell.showItemInFolder(data.path);
+        openBtn.onclick = () => {
+          if (window.electronAPI && window.electronAPI.showItemInFolder) {
+            window.electronAPI.showItemInFolder(data.path);
+          } else {
+            // Fallback: open downloads folder if showItemInFolder isn't available
+            window.electronAPI.openDownloadFolder();
+          }
+        };
         openBtn.style = 'padding: 2px 8px; font-size: 11px; margin-left: 5px; background: #4CAF50; color: white; border: none; border-radius: 3px;';
         item.querySelector('.download-status').appendChild(openBtn);
         
@@ -210,13 +217,16 @@
       }
     }
 
-    // Для совместимости с shell.showItemInFolder
+    // Legacy compatibility: keep a small shim object that forwards to electronAPI
     const shell = {
       showItemInFolder: (path) => {
-        // Эта функция будет работать через Electron API
-        window.electronAPI.openDownloadFolder();
+        if (window.electronAPI && window.electronAPI.showItemInFolder) {
+          window.electronAPI.showItemInFolder(path);
+        } else {
+          window.electronAPI.openDownloadFolder();
+        }
       }
     };
   </script>
 </body>
-</html>
+</html> 
