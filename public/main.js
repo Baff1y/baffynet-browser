@@ -72,12 +72,14 @@ function createNewTab(url) {
   tab.dataset.tabId = tabId
   tab.innerHTML = `
     <img class="tab-favicon" src="https://i.ibb.co/v4PmyTNq/image.png">
-    <span class="tab-title">${finalUrl.includes('example.com') ? 'Example' : 'Новая вкладка'}</span>
+    <span class="tab-title">${finalUrl.includes('example.com') ? 'Пример' : 'Новая вкладка'}</span>
     <span class="tab-close" data-tab-id="${tabId}">×</span>
   `
   tabsContainer.insertBefore(tab, document.getElementById('new-tab'))
 
   const webview = document.createElement('webview')
+  // Разрешаем всплывающие окна внутри webview, но будем обрабатывать их в коде
+  webview.setAttribute('allowpopups', 'true')
   webview.src = finalUrl
   webview.dataset.tabId = tabId
   webview.style.display = 'none'
@@ -94,6 +96,21 @@ function createNewTab(url) {
 
   webview.addEventListener('page-favicon-updated', (e) => {
     updateTabFavicon(tabId, e.favicons[0])
+  })
+
+  // Обработка открытия новых окон/ссылок (target="_blank" или window.open)
+  // Открываем такие ссылки в новой вкладке приложения. Обычные клики по ссылкам
+  // (без target="_blank") остаются в той же вкладке.
+  webview.addEventListener('new-window', (e) => {
+    try {
+      const url = e.url || (e.detail && e.detail.url)
+      if (e.preventDefault) e.preventDefault()
+      if (url && !url.startsWith('javascript:') && !url.startsWith('about:')) {
+        createNewTab(url)
+      }
+    } catch (err) {
+      console.error('Ошибка при открытии новой вкладки из webview (new-window):', err)
+    }
   })
 
   switchTab(tabId)
