@@ -6,6 +6,33 @@ let mainWindow;
 let extensions = [];
 const activeDownloads = new Map();
 
+// Перехватываем попытки открыть новое окно из любого webContents (включая webview)
+// и перенаправляем их в основное окно как создание новой вкладки.
+// Это предотвращает создание отдельного BrowserWindow для target="_blank" из webview.
+const setupGlobalWindowOpenHandler = () => {
+  const { app } = require('electron')
+  app.on('web-contents-created', (event, contents) => {
+    try {
+      // Применяем обработчик для всех типов webContents — мы будем перенаправлять
+      // запросы на открытие окон в `mainWindow`.
+      contents.setWindowOpenHandler(({ url }) => {
+        try {
+          if (mainWindow && url && !url.startsWith('javascript:') && !url.startsWith('about:')) {
+            mainWindow.webContents.send('create-new-tab', url)
+            return { action: 'deny' }
+          }
+        } catch (err) {
+          console.error('Ошибка в глобальном обработчике открытия окна:', err)
+        }
+        return { action: 'deny' }
+      })
+    } catch (err) {
+      // В некоторых старых/специальных webContents метод может отсутствовать
+    }
+  })
+}
+
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -163,6 +190,9 @@ app.on('open-url', (event, url) => {
   }
 });
 
+// Настроим глобальный перехват открытия окон перед созданием окна
+setupGlobalWindowOpenHandler()
+
 async function loadExtensions() {
   try {
     const extensionsPath = 'C:\\Program Files\\BaffyNet\\Addons';
@@ -277,4 +307,28 @@ ipcMain.handle('cancel-download', (event, downloadId) => {
     return true;
   }
   return false;
+});
+
+// Open the user's downloads folder
+ipcMain.handle('open-download-folder', async () => {
+  try {
+    const downloadsPath = app.getPath('downloads');
+    await shell.openPath(downloadsPath);
+    return true;
+  } catch (err) {
+    console.error('Error opening downloads folder:', err);
+    return false;
+  }
+});
+
+// Show an item in folder (highlight the file)
+ipcMain.handle('show-item-in-folder', (event, filePath) => {
+  try {
+    // shell.showItemInFolder returns a boolean in some Electron versions; just call it
+    shell.showItemInFolder(filePath);
+    return true;
+  } catch (err) {
+    console.error('Error showing item in folder:', err);
+    return false;
+  }
 });
