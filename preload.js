@@ -29,5 +29,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onDownloadComplete: (callback) => ipcRenderer.on('download-complete', callback),
   onDownloadError: (callback) => ipcRenderer.on('download-error', callback),
   cancelDownload: (downloadId) => ipcRenderer.invoke('cancel-download', downloadId),
-  openDownloadFolder: () => ipcRenderer.invoke('open-download-folder')
+  openDownloadFolder: () => ipcRenderer.invoke('open-download-folder'),
+  showItemInFolder: (filePath) => ipcRenderer.invoke('show-item-in-folder', filePath)
 })
