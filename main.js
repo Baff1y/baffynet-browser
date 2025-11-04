@@ -5,6 +5,56 @@ const fs = require('fs').promises;
 let mainWindow;
 let extensions = [];
 const activeDownloads = new Map();
+let deeplinkingUrl = null;
+
+// Обработка single-instance и deep links (Windows): если приложение уже запущено,
+// вторичный инстанс передаёт URL в основной процесс через событие 'second-instance'.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, argv) => {
+    // На Windows protocol URL обычно приходит в argv при запуске второго инстанса
+    if (process.platform === 'win32') {
+      const url = argv.find(a => /^https?:\/\//i.test(a) || /^baffynet:\/\//i.test(a));
+      if (url) {
+        if (mainWindow) {
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.focus();
+          mainWindow.webContents.send('create-new-tab', url);
+        } else {
+          deeplinkingUrl = url;
+        }
+      }
+    }
+  });
+}
+
+// На Windows первый инстанс может получить URL в process.argv при запуске через протокол
+if (process.platform === 'win32') {
+  const urlArg = process.argv.find(a => /^https?:\/\//i.test(a) || /^baffynet:\/\//i.test(a));
+  if (urlArg) deeplinkingUrl = urlArg;
+}
+
+// Регистрация приложения как обработчика http/https-протоколов.
+function registerHttpProtocolHandlers() {
+  try {
+    // На Windows при запуске из IDE нужно передать argv[1]
+    if (process.platform === 'win32' && process.defaultApp) {
+      if (process.argv.length >= 2) {
+        const appArg = path.resolve(process.argv[1]);
+        app.setAsDefaultProtocolClient('http', process.execPath, [appArg]);
+        app.setAsDefaultProtocolClient('https', process.execPath, [appArg]);
+      }
+    } else {
+      // Обычная регистрация (работает в установленных приложениях)
+      app.setAsDefaultProtocolClient('http');
+      app.setAsDefaultProtocolClient('https');
+    }
+  } catch (err) {
+    console.error('Не удалось зарегистрировать обработчики протоколов:', err);
+  }
+}
 
 // Перехватываем попытки открыть новое окно из любого webContents (включая webview)
 // и перенаправляем их в основное окно как создание новой вкладки.
@@ -49,6 +99,14 @@ function createWindow() {
 
   mainWindow.loadFile('public/index.html');
   loadExtensions();
+
+  // Если приложение было запущено с URL (deep link), откроем его в новой вкладке
+  if (deeplinkingUrl) {
+    mainWindow.webContents.once('did-finish-load', () => {
+      mainWindow.webContents.send('create-new-tab', deeplinkingUrl);
+      deeplinkingUrl = null;
+    });
+  }
 
   app.whenReady().then(() => {
     globalShortcut.register('CommandOrControl+K', () => {
@@ -169,12 +227,8 @@ function createWindow() {
   Menu.setApplicationMenu(null);
 }
 
-if (!app.isDefaultProtocolClient('http')) {
-  app.setAsDefaultProtocolClient('http');
-}
-if (!app.isDefaultProtocolClient('https')) {
-  app.setAsDefaultProtocolClient('https');
-}
+// Регистрируем обработчики протоколов http/https для системы
+registerHttpProtocolHandlers()
 
 app.on('open-url', (event, url) => {
   event.preventDefault();
