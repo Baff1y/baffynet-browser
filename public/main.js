@@ -14,14 +14,28 @@ setTimeout(() => {
   createExtensionsButton()
 }, 1000)
 
-// Инициализация темы при загрузке
+// Инициализация темы и пользовательского CSS при загрузке
 initializeTheme()
+applyCustomCSS()
 
 function initializeTheme() {
   const savedTheme = localStorage.getItem('theme') || 'dark'
   document.body.classList.toggle('dark-theme', savedTheme === 'dark')
   document.body.classList.toggle('light-theme', savedTheme === 'light')
   updateThemeVariables(savedTheme)
+}
+
+function applyCustomCSS() {
+  const customCSS = localStorage.getItem('customCSS') || ''
+  if (customCSS) {
+    let styleEl = document.getElementById('custom-css-style')
+    if (!styleEl) {
+      styleEl = document.createElement('style')
+      styleEl.id = 'custom-css-style'
+      document.head.appendChild(styleEl)
+    }
+    styleEl.textContent = customCSS
+  }
 }
 
 function toggleTheme() {
@@ -63,9 +77,170 @@ function updateThemeVariables(theme) {
   }
 }
 
+// Theme panel: reuse modal styles to present theme choices and custom CSS editor
+function showThemePanel() {
+  // If already open, don't open another
+  if (document.getElementById('theme-panel-modal')) return
+
+  const modal = document.createElement('div')
+  modal.className = 'modal'
+  modal.id = 'theme-panel-modal'
+
+  const content = document.createElement('div')
+  content.className = 'modal-content'
+  content.style.maxWidth = '600px'
+
+  // Render tabs and content
+  const current = localStorage.getItem('theme') || 'dark'
+  const darkMarker = current === 'dark' ? ')' : ' '
+  const lightMarker = current === 'light' ? '*' : ' '
+  const customCSS = localStorage.getItem('customCSS') || ''
+
+  content.innerHTML = `
+    <h2>Панель оформления</h2>
+    
+    <div style="display:flex; gap:8px; margin:10px 0; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
+      <button id="tab-themes" style="padding:6px 12px; background:var(--tab-active-bg); color:var(--text-color); border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Темы</button>
+      <button id="tab-css" style="padding:6px 12px; background:var(--tab-bg); color:var(--text-color); border:none; border-radius:4px; cursor:pointer;">Кастомный CSS</button>
+    </div>
+    
+    <div id="content-themes" style="display:block;">
+      <div style="margin:10px 0; color:var(--text-color);">А вы знали что вы можете сделать свой css в панеле "Кастомный CSS"?</div>
+      <div style="margin:10px 0; display:flex; flex-direction:column; gap:8px;">
+        <button id="theme-btn-dark" style="padding:10px 12px; text-align:left; font-family:monospace; background:${current === 'dark' ? 'var(--tab-active-bg)' : 'var(--tab-bg)'}; color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">${darkMarker}Тёмная (по умолчанию)</button>
+        <button id="theme-btn-light" style="padding:10px 12px; text-align:left; font-family:monospace; background:${current === 'light' ? 'var(--tab-active-bg)' : 'var(--tab-bg)'}; color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">${lightMarker}Светлая</button>
+      </div>
+    </div>
+    
+    <div id="content-css" style="display:none;">
+      <div style="margin:10px 0; color:var(--text-color);">Введи свой CSS для кастомизации интерфейса:</div>
+      <textarea id="custom-css-input" style="width:100%; height:250px; padding:8px; background:var(--url-bar-bg); color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; font-family:monospace; font-size:12px; resize:vertical;">${customCSS}</textarea>
+      <div style="margin:10px 0; font-size:12px; color:#888;">
+        Пример: <code>body { background-color: #1a1a1a !important; }</code>
+      </div>
+      <div style="display:flex; gap:8px; margin:10px 0;">
+        <button id="save-css-btn" style="flex:1; padding:8px 12px; background:var(--button-bg); color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">Применить</button>
+        <button id="reset-css-btn" style="flex:1; padding:8px 12px; background:var(--button-bg); color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">Очистить</button>
+      </div>
+    </div>
+    
+    <div class="modal-actions" style="margin-top:10px;">
+      <button id="theme-apply-close">Закрыть</button>
+    </div>
+  `
+
+  modal.appendChild(content)
+  document.body.appendChild(modal)
+
+  // Tab switching
+  const tabThemes = document.getElementById('tab-themes')
+  const tabCss = document.getElementById('tab-css')
+  const contentThemes = document.getElementById('content-themes')
+  const contentCss = document.getElementById('content-css')
+
+  tabThemes.onclick = () => {
+    contentThemes.style.display = 'block'
+    contentCss.style.display = 'none'
+    tabThemes.style.background = 'var(--tab-active-bg)'
+    tabCss.style.background = 'var(--tab-bg)'
+  }
+
+  tabCss.onclick = () => {
+    contentThemes.style.display = 'none'
+    contentCss.style.display = 'block'
+    tabThemes.style.background = 'var(--tab-bg)'
+    tabCss.style.background = 'var(--tab-active-bg)'
+  }
+
+  // Theme selection handlers
+  const setMarkers = (selected) => {
+    const darkBtn = document.getElementById('theme-btn-dark')
+    const lightBtn = document.getElementById('theme-btn-light')
+    if (!darkBtn || !lightBtn) return
+    if (selected === 'dark') {
+      darkBtn.textContent = ')Тёмная (по умолчанию)'
+      darkBtn.style.background = 'var(--tab-active-bg)'
+      lightBtn.textContent = ' Светлая'
+      lightBtn.style.background = 'var(--tab-bg)'
+    } else {
+      darkBtn.textContent = ' Тёмная (по умолчанию)'
+      darkBtn.style.background = 'var(--tab-bg)'
+      lightBtn.textContent = '*Светлая'
+      lightBtn.style.background = 'var(--tab-active-bg)'
+    }
+  }
+
+  const applyThemeSelection = (sel) => {
+    localStorage.setItem('theme', sel)
+    if (sel === 'dark') {
+      document.body.classList.add('dark-theme')
+      document.body.classList.remove('light-theme')
+    } else {
+      document.body.classList.add('light-theme')
+      document.body.classList.remove('dark-theme')
+    }
+    updateThemeVariables(sel)
+    setMarkers(sel)
+  }
+
+  const darkBtn = document.getElementById('theme-btn-dark')
+  const lightBtn = document.getElementById('theme-btn-light')
+
+  if (darkBtn) darkBtn.onclick = () => applyThemeSelection('dark')
+  if (lightBtn) lightBtn.onclick = () => applyThemeSelection('light')
+
+  // CSS editor handlers
+  const saveCssBtn = document.getElementById('save-css-btn')
+  const resetCssBtn = document.getElementById('reset-css-btn')
+  const cssInput = document.getElementById('custom-css-input')
+
+  if (saveCssBtn) {
+    saveCssBtn.onclick = () => {
+      const css = cssInput.value
+      localStorage.setItem('customCSS', css)
+      applyCustomCSS()
+      alert('CSS применён и сохранён!')
+    }
+  }
+
+  if (resetCssBtn) {
+    resetCssBtn.onclick = () => {
+      if (confirm('Удалить весь кастомный CSS?')) {
+        cssInput.value = ''
+        localStorage.removeItem('customCSS')
+        applyCustomCSS()
+        alert('CSS очищен! Пожалуйста, перезагрузите браузер:)')
+      }
+    }
+  }
+
+  // Close modal
+  document.getElementById('theme-apply-close').onclick = () => {
+    modal.remove()
+  }
+}
+
 function createNewTab(url) {
   const finalUrl = url || localStorage.getItem('newTabPage') || 'https://baffynet.rf.gd'
   const tabId = tabCounter++
+
+  // If the URL is a local file (file://), open it in Explorer instead of loading in a webview
+  try {
+    if (finalUrl && finalUrl.startsWith('file://')) {
+      let filePath = finalUrl.replace(/^file:\/\//i, '')
+      // Remove leading slash on Windows paths like /C:/...
+      if (filePath.startsWith('/')) filePath = filePath.slice(1)
+      filePath = decodeURIComponent(filePath)
+      if (window.electronAPI && window.electronAPI.showItemInFolder) {
+        window.electronAPI.showItemInFolder(filePath)
+      } else if (window.electronAPI && window.electronAPI.openDownloadFolder) {
+        window.electronAPI.openDownloadFolder()
+      }
+      return
+    }
+  } catch (err) {
+    console.error('Error handling file:// URL in createNewTab:', err)
+  }
 
   const tab = document.createElement('div')
   tab.className = 'tab'
@@ -563,7 +738,8 @@ if (window.electronAPI) {
   })
 
   window.electronAPI.onToggleTheme(() => {
-    toggleTheme()
+    // Open the theme panel for more options; keep toggle available inside panel
+    showThemePanel()
   })
 
   window.electronAPI.onUndoAction(() => {
