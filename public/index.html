@@ -121,7 +121,7 @@
       if (item) {
         item.classList.remove('download-active');
         item.classList.add('download-error');
-        item.querySelector('.download-status').textContent = '❌ Отменено';
+        item.querySelector('.download-status').textContent = '[X] Отменено';
         updateDownloadsCount();
       }
     }
@@ -172,7 +172,7 @@
       if (item) {
         item.classList.remove('download-active');
         item.classList.add('download-complete');
-        item.querySelector('.download-status').innerHTML = '✅ <strong>Завершено</strong>';
+        item.querySelector('.download-status').innerHTML = '[V] <strong>Завершено</strong>';
         item.querySelector('.download-progress-bar').style.background = '#4CAF50';
         
         const cancelBtn = item.querySelector('button');
@@ -200,7 +200,7 @@
       if (item) {
         item.classList.remove('download-active');
         item.classList.add('download-error');
-        item.querySelector('.download-status').textContent = '❌ Ошибка';
+        item.querySelector('.download-status').textContent = 'Ошибка :(';
         item.querySelector('.download-progress-bar').style.background = '#ff4444';
         updateDownloadsCount();
       }
