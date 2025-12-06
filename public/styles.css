@@ -100,11 +100,21 @@ html, body, #app {
   text-overflow: ellipsis;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  user-select: none;
 }
 
 .tab.active {
   background: var(--tab-active-bg);
   border-bottom: 2px solid #47a3ff;
+}
+
+.tab[draggable="true"] {
+  cursor: move;
+  opacity: 0.7;
+}
+
+.tab[draggable="true"]:hover {
+  background: var(--button-hover);
 }
 
 .tab-favicon {
