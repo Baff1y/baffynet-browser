@@ -15,7 +15,7 @@
         <button type="button" id="back"><</button>
         <button type="button" id="forward">></button>
         <button type="button" id="reload">⟳</button>
-        <input id="url-bar" type="text" placeholder="Введите URL или поисковой запрос...">
+        <input id="url-bar" type="text" placeholder="Enter url or search request...">
         <!-- Кнопки расширений и загрузок добавятся сюда через JS -->
       </div>
     </div>
@@ -24,27 +24,27 @@
 
   <div id="url-prompt-modal" class="modal hidden">
     <div class="modal-content">
-      <h2>Настройки URL</h2>
-      <label for="start-url">Стартовая страница:</label>
+      <h2>URL Settings</h2>
+      <label for="start-url">Start Page:</label>
       <input type="text" id="start-url" placeholder="https://example.com">
-      <label for="new-tab-url">Страница новой вкладки:</label>
+      <label for="new-tab-url">New page url:</label>
       <input type="text" id="new-tab-url" placeholder="https://example.com">
       <div class="modal-actions">
-        <button id="save-url-settings">Сохранить</button>
-        <button id="cancel-url-settings">Отмена</button>
+        <button id="save-url-settings">Save</button>
+        <button id="cancel-url-settings">Cancel</button>
       </div>
     </div>
   </div>
 
   <div id="search-engine-modal" class="modal hidden">
     <div class="modal-content">
-      <h2>Настройка поисковой системы</h2>
-      <label for="search-engine-input">Шаблон URL поисковой системы:</label>
+      <h2>Search enginee switcher</h2>
+      <label for="search-engine-input">Search engine URL:</label>
       <input type="text" id="search-engine-input" placeholder="https://www.google.com/search?q={URL}">
-      <small>Используйте {URL} для подстановки поискового запроса</small>
+      <small>Search {URL} in your search engine, and paste the url</small>
       <div class="modal-actions">
-        <button id="save-search-engine">Сохранить</button>
-        <button id="cancel-search-engine">Отмена</button>
+        <button id="save-search-engine">Save</button>
+        <button id="cancel-search-engine">Cancel</button>
       </div>
     </div>
   </div>
@@ -52,13 +52,13 @@
   <div id="downloads-panel" class="modal hidden">
     <div class="modal-content" style="width: 500px; max-height: 600px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2 style="margin: 0;">⭳ Менеджер загрузок</h2>
+        <h2 style="margin: 0;">⭳ Download Manager</h2>
         <button onclick="hideDownloads()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-color);">×</button>
       </div>
       
       <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-        <button onclick="openDownloadFolder()" style="flex: 1;">/__/ Открыть папку</button>
-        <button onclick="clearCompletedDownloads()" style="flex: 1;">\_/ Очистить завершенные</button>
+        <button onclick="openDownloadFolder()" style="flex: 1;">/__/ Open Folder</button>
+        <button onclick="clearCompletedDownloads()" style="flex: 1;">\_/ Clear </button>
       </div>
       
       <div id="downloads-list" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px;">
@@ -66,7 +66,7 @@
       </div>
       
       <div style="margin-top: 15px; text-align: center;">
-        <button onclick="hideDownloads()">Закрыть</button>
+        <button onclick="hideDownloads()">Close</button>
       </div>
     </div>
   </div>
@@ -121,7 +121,7 @@
       if (item) {
         item.classList.remove('download-active');
         item.classList.add('download-error');
-        item.querySelector('.download-status').textContent = '[X] Отменено';
+        item.querySelector('.download-status').textContent = '[X] Canceled';
         updateDownloadsCount();
       }
     }
@@ -146,8 +146,8 @@
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #888;">
               <div class="download-size">0 MB / 0 MB</div>
-              <div class="download-status">Загружается...</div>
-              <button onclick="cancelDownload('${data.id}')" style="padding: 2px 8px; font-size: 11px; background: #ff4444; color: white; border: none; border-radius: 3px;">Отмена</button>
+              <div class="download-status">Downloading...</div>
+              <button onclick="cancelDownload('${data.id}')" style="padding: 2px 8px; font-size: 11px; background: #ff4444; color: white; border: none; border-radius: 3px;">Cancel</button>
             </div>
           </div>
         `;
@@ -172,14 +172,14 @@
       if (item) {
         item.classList.remove('download-active');
         item.classList.add('download-complete');
-        item.querySelector('.download-status').innerHTML = '[V] <strong>Завершено</strong>';
+        item.querySelector('.download-status').innerHTML = '[V] <strong>Ready</strong>';
         item.querySelector('.download-progress-bar').style.background = '#4CAF50';
         
         const cancelBtn = item.querySelector('button');
         if (cancelBtn) cancelBtn.remove();
         
         const openBtn = document.createElement('button');
-        openBtn.textContent = 'Открыть';
+        openBtn.textContent = 'Open';
         openBtn.onclick = () => {
           if (window.electronAPI && window.electronAPI.showItemInFolder) {
             window.electronAPI.showItemInFolder(data.path);
@@ -200,7 +200,7 @@
       if (item) {
         item.classList.remove('download-active');
         item.classList.add('download-error');
-        item.querySelector('.download-status').textContent = 'Ошибка :(';
+        item.querySelector('.download-status').textContent = 'Error :(';
         item.querySelector('.download-progress-bar').style.background = '#ff4444';
         updateDownloadsCount();
       }
