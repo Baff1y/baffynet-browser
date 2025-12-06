@@ -52,11 +52,11 @@ function registerHttpProtocolHandlers() {
       app.setAsDefaultProtocolClient('https');
     }
   } catch (err) {
-    console.error('Не удалось зарегистрировать обработчики протоколов:', err);
+    console.error('Cannot regester url:', err);
   }
 }
 
-// Перехватываем попытки открыть новое окно из любого webContents (включая webview)
+// Перехватываем попытки Open новое окно из любого webContents (включая webview)
 // и перенаправляем их в основное окно как создание новой вкладки.
 // Это предотвращает создание отдельного BrowserWindow для target="_blank" из webview.
 const setupGlobalWindowOpenHandler = () => {
@@ -72,7 +72,7 @@ const setupGlobalWindowOpenHandler = () => {
             return { action: 'deny' }
           }
         } catch (err) {
-          console.error('Ошибка в глобальном обработчике открытия окна:', err)
+          console.error('error:(', err)
         }
         return { action: 'deny' }
       })
@@ -115,7 +115,6 @@ function createWindow() {
     });
   });
 
-  // 🔥 Обработка target="_blank"
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     mainWindow.webContents.send('create-new-tab', url);
     return { action: 'deny' };
@@ -210,7 +209,7 @@ function createWindow() {
       event.preventDefault();
       shell.openPath('C:/Program Files/BaffyNet/PrivacyNet.exe')
         .then(result => {
-          if (result) console.error('Ошибка при открытии:', result);
+          if (result) console.error('error while opening:', result);
         });
     }
     if (input.control && input.shift && key === 'e') {
@@ -274,14 +273,14 @@ async function loadExtensions() {
             path: path.join(extensionsPath, item.name)
           });
         } catch (error) {
-          console.error(`Ошибка загрузки расширения ${item.name}:`, error);
+          console.error(`addons loading error${item.name}:`, error);
         }
       }
     }
 
     mainWindow.webContents.send('extensions-loaded', extensions);
   } catch (error) {
-    console.error('Ошибка загрузки расширений:', error);
+    console.error('addons error:', error);
   }
 }
 
@@ -292,7 +291,7 @@ ipcMain.on('open-extensions-folder', async () => {
   try {
     await shell.openPath(extensionsPath);
   } catch (error) {
-    console.error('Ошибка открытия папки:', error);
+    console.error('error while opening folder:', error);
   }
 });
 
