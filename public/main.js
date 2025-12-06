@@ -14,7 +14,7 @@ setTimeout(() => {
   createExtensionsButton()
 }, 1000)
 
-// Инициализация темы и пользовательского CSS при загрузке
+// Инициализация Themes и пользовательского CSS при загрузке
 initializeTheme()
 applyCustomCSS()
 
@@ -97,35 +97,35 @@ function showThemePanel() {
   const customCSS = localStorage.getItem('customCSS') || ''
 
   content.innerHTML = `
-    <h2>Панель оформления</h2>
+    <h2>Design panel</h2>
     
     <div style="display:flex; gap:8px; margin:10px 0; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
-      <button id="tab-themes" style="padding:6px 12px; background:var(--tab-active-bg); color:var(--text-color); border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Темы</button>
-      <button id="tab-css" style="padding:6px 12px; background:var(--tab-bg); color:var(--text-color); border:none; border-radius:4px; cursor:pointer;">Кастомный CSS</button>
+      <button id="tab-themes" style="padding:6px 12px; background:var(--tab-active-bg); color:var(--text-color); border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Themes</button>
+      <button id="tab-css" style="padding:6px 12px; background:var(--tab-bg); color:var(--text-color); border:none; border-radius:4px; cursor:pointer;">Custom CSS</button>
     </div>
     
     <div id="content-themes" style="display:block;">
-      <div style="margin:10px 0; color:var(--text-color);">А вы знали что вы можете сделать свой css в панеле "Кастомный CSS"?</div>
+      <div style="margin:10px 0; color:var(--text-color);">I should type something here</div>
       <div style="margin:10px 0; display:flex; flex-direction:column; gap:8px;">
-        <button id="theme-btn-dark" style="padding:10px 12px; text-align:left; font-family:monospace; background:${current === 'dark' ? 'var(--tab-active-bg)' : 'var(--tab-bg)'}; color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">${darkMarker}Тёмная (по умолчанию)</button>
-        <button id="theme-btn-light" style="padding:10px 12px; text-align:left; font-family:monospace; background:${current === 'light' ? 'var(--tab-active-bg)' : 'var(--tab-bg)'}; color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">${lightMarker}Светлая</button>
+        <button id="theme-btn-dark" style="padding:10px 12px; text-align:left; font-family:monospace; background:${current === 'dark' ? 'var(--tab-active-bg)' : 'var(--tab-bg)'}; color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">${darkMarker}Black</button>
+        <button id="theme-btn-light" style="padding:10px 12px; text-align:left; font-family:monospace; background:${current === 'light' ? 'var(--tab-active-bg)' : 'var(--tab-bg)'}; color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">${lightMarker}White</button>
       </div>
     </div>
     
     <div id="content-css" style="display:none;">
-      <div style="margin:10px 0; color:var(--text-color);">Введи свой CSS для кастомизации интерфейса:</div>
+      <div style="margin:10px 0; color:var(--text-color);">Enter your css to edit interface:</div>
       <textarea id="custom-css-input" style="width:100%; height:250px; padding:8px; background:var(--url-bar-bg); color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; font-family:monospace; font-size:12px; resize:vertical;">${customCSS}</textarea>
       <div style="margin:10px 0; font-size:12px; color:#888;">
-        Пример: <code>body { background-color: #1a1a1a !important; }</code>
+        Example: <code>body { background-color: #1a1a1a !important; }</code>
       </div>
       <div style="display:flex; gap:8px; margin:10px 0;">
-        <button id="save-css-btn" style="flex:1; padding:8px 12px; background:var(--button-bg); color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">Применить</button>
-        <button id="reset-css-btn" style="flex:1; padding:8px 12px; background:var(--button-bg); color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">Очистить</button>
+        <button id="save-css-btn" style="flex:1; padding:8px 12px; background:var(--button-bg); color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">Apply</button>
+        <button id="reset-css-btn" style="flex:1; padding:8px 12px; background:var(--button-bg); color:var(--text-color); border:1px solid var(--border-color); border-radius:4px; cursor:pointer;">Clear</button>
       </div>
     </div>
     
     <div class="modal-actions" style="margin-top:10px;">
-      <button id="theme-apply-close">Закрыть</button>
+      <button id="theme-apply-close">Close</button>
     </div>
   `
 
@@ -158,14 +158,14 @@ function showThemePanel() {
     const lightBtn = document.getElementById('theme-btn-light')
     if (!darkBtn || !lightBtn) return
     if (selected === 'dark') {
-      darkBtn.textContent = ')Тёмная (по умолчанию)'
+      darkBtn.textContent = 'Black  '
       darkBtn.style.background = 'var(--tab-active-bg)'
-      lightBtn.textContent = ' Светлая'
+      lightBtn.textContent = ' White'
       lightBtn.style.background = 'var(--tab-bg)'
     } else {
-      darkBtn.textContent = ' Тёмная (по умолчанию)'
+      darkBtn.textContent = 'Black  '
       darkBtn.style.background = 'var(--tab-bg)'
-      lightBtn.textContent = '*Светлая'
+      lightBtn.textContent = 'White'
       lightBtn.style.background = 'var(--tab-active-bg)'
     }
   }
@@ -199,17 +199,17 @@ function showThemePanel() {
       const css = cssInput.value
       localStorage.setItem('customCSS', css)
       applyCustomCSS()
-      alert('CSS применён и сохранён!')
+      alert('CSS saved! Reload your browser')
     }
   }
 
   if (resetCssBtn) {
     resetCssBtn.onclick = () => {
-      if (confirm('Удалить весь кастомный CSS?')) {
+      if (confirm('Delete custom CSS?')) {
         cssInput.value = ''
         localStorage.removeItem('customCSS')
         applyCustomCSS()
-        alert('CSS очищен! Пожалуйста, перезагрузите браузер:)')
+        alert('CSS remooved! Reload your browser')
       }
     }
   }
@@ -247,7 +247,7 @@ function createNewTab(url) {
   tab.dataset.tabId = tabId
   tab.innerHTML = `
     <img class="tab-favicon" src="https://i.ibb.co/v4PmyTNq/image.png">
-    <span class="tab-title">${finalUrl.includes('example.com') ? 'Пример' : 'Новая вкладка'}</span>
+    <span class="tab-title">${finalUrl.includes('example.com') ? 'Example' : 'New Tab'}</span>
     <span class="tab-close" data-tab-id="${tabId}">×</span>
   `
   tabsContainer.insertBefore(tab, document.getElementById('new-tab'))
@@ -284,7 +284,7 @@ function createNewTab(url) {
         createNewTab(url)
       }
     } catch (err) {
-      console.error('Ошибка при открытии новой вкладки из webview (new-window):', err)
+      console.error('webview error:', err)
     }
   })
 
@@ -307,7 +307,7 @@ function updateTabFavicon(tabId, faviconUrl) {
 
 function updateTabTitle(tabId, title) {
   const tabTitle = document.querySelector(`.tab[data-tab-id="${tabId}"] .tab-title`)
-  if (tabTitle) tabTitle.textContent = title || 'Новая вкладка'
+  if (tabTitle) tabTitle.textContent = title || 'New Tab'
 
   if (window.electronAPI) {
     window.electronAPI.updateTitle(title)
@@ -412,7 +412,7 @@ function showSearchEnginePromptModal() {
       localStorage.setItem('searchEngineTemplate', template)
       modal.classList.add('hidden')
     } else {
-      alert('Шаблон должен содержать {URL} для подстановки поискового запроса')
+      alert('Url should have {URL} parameter to work properly.')
     }
   }
 
@@ -443,7 +443,7 @@ function createExtensionsButton() {
   const extensionsBtn = document.createElement('button')
   extensionsBtn.id = 'extensions-btn'
   extensionsBtn.innerHTML = '⧉'
-  extensionsBtn.title = 'Расширения'
+  extensionsBtn.title = 'Addons'
   extensionsBtn.style.cssText = `
     padding: 6px 12px;
     background: var(--button-bg);
@@ -501,14 +501,14 @@ function showExtensionsMenu() {
   `
 
   const title = document.createElement('h3')
-  title.textContent = 'Расширения'
+  title.textContent = ' Addons'
   title.style.margin = '0 0 10px 0'
   title.style.color = 'var(--text-color)'
   menu.appendChild(title)
 
   // Кнопка открытия папки
   const openFolderBtn = document.createElement('button')
-  openFolderBtn.textContent = '/__/ Открыть папку расширений'
+  openFolderBtn.textContent = '/__/ Open Addons Folder'
   openFolderBtn.style.width = '100%'
   openFolderBtn.style.marginBottom = '10px'
   openFolderBtn.onclick = () => {
@@ -519,7 +519,7 @@ function showExtensionsMenu() {
 
   // Кнопка перезагрузки
   const reloadBtn = document.createElement('button')
-  reloadBtn.textContent = '⟳ Перезагрузить расширения'
+  reloadBtn.textContent = '⟳ Reload Addons'
   reloadBtn.style.width = '100%'
   reloadBtn.style.marginBottom = '10px'
   reloadBtn.onclick = () => {
@@ -530,7 +530,7 @@ function showExtensionsMenu() {
 
   // Кнопка открытия магазина расширений
   const shopBtn = document.createElement('button')
-  shopBtn.textContent = '(/) Магазин расширений'
+  shopBtn.textContent = '(/) Addons Shop'
   shopBtn.style.width = '100%'
   shopBtn.style.marginBottom = '10px'
   shopBtn.onclick = () => {
@@ -542,7 +542,7 @@ function showExtensionsMenu() {
   // Список расширений
   if (extensionsList.length === 0) {
     const noExtensions = document.createElement('div')
-    noExtensions.textContent = 'Расширения не найдены'
+    noExtensions.textContent = 'Addons not found:('
     noExtensions.style.color = 'var(--text-color)'
     noExtensions.style.textAlign = 'center'
     noExtensions.style.padding = '20px'
@@ -684,6 +684,63 @@ tabsContainer.addEventListener('click', (e) => {
   }
 })
 
+// Drag and drop tabs functionality
+let draggedTab = null;
+
+tabsContainer.addEventListener('dragstart', (e) => {
+  const tab = e.target.closest('.tab');
+  if (tab) {
+    draggedTab = tab;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', tab.innerHTML);
+    tab.style.opacity = '0.5';
+  }
+});
+
+tabsContainer.addEventListener('dragend', (e) => {
+  const tab = e.target.closest('.tab');
+  if (tab) {
+    tab.style.opacity = '1';
+    draggedTab = null;
+  }
+});
+
+tabsContainer.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const tab = e.target.closest('.tab');
+  if (tab && draggedTab && tab !== draggedTab) {
+    const allTabs = Array.from(tabsContainer.querySelectorAll('.tab'));
+    const draggedIndex = allTabs.indexOf(draggedTab);
+    const targetIndex = allTabs.indexOf(tab);
+    
+    if (draggedIndex < targetIndex) {
+      tab.parentNode.insertBefore(draggedTab, tab.nextSibling);
+    } else {
+      tab.parentNode.insertBefore(draggedTab, tab);
+    }
+  }
+});
+
+tabsContainer.addEventListener('drop', (e) => {
+  e.preventDefault();
+});
+
+// Make tabs draggable
+tabsContainer.addEventListener('mousedown', (e) => {
+  const tab = e.target.closest('.tab');
+  if (tab && !e.target.classList.contains('tab-close')) {
+    tab.draggable = true;
+  }
+});
+
+tabsContainer.addEventListener('mouseup', (e) => {
+  const tab = e.target.closest('.tab');
+  if (tab) {
+    tab.draggable = false;
+  }
+});
+
 document.getElementById('back').addEventListener('click', () => {
   const activeWebview = document.querySelector('webview[style*="display: flex;"]')
   if (activeWebview) activeWebview.goBack()
@@ -757,7 +814,7 @@ if (window.electronAPI) {
   // Обработчики расширений
   window.electronAPI.onExtensionsLoaded((event, extensions) => {
     extensionsList = extensions
-    console.log('Расширения загружены:', extensions)
+    console.log('Addons loaded:', extensions)
   })
 
   window.electronAPI.onOpenExtensionPopup((event, extension) => {
