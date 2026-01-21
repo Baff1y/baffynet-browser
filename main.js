@@ -166,6 +166,104 @@ function createWindow() {
     });
   });
 
+  // Permission handling: prompt UI for geolocation / media (camera/microphone)
+  const permissionsStore = new Map(); // key: `${origin}|${permission}` -> boolean
+  const permissionsFile = path.join(app.getPath('userData'), 'permissions.json');
+
+  async function loadPermissions() {
+    try {
+      const content = await fs.readFile(permissionsFile, 'utf8');
+      const obj = JSON.parse(content || '{}');
+      for (const k of Object.keys(obj)) permissionsStore.set(k, obj[k]);
+    } catch (e) {
+      // ignore missing file or parse errors
+    }
+  }
+
+  async function savePermissions() {
+    try {
+      const obj = {};
+      for (const [k, v] of permissionsStore) obj[k] = v;
+      await fs.writeFile(permissionsFile, JSON.stringify(obj, null, 2), 'utf8');
+    } catch (err) {
+      console.error('savePermissions error', err);
+    }
+  }
+
+  // load previously saved permissions (don't block startup)
+  loadPermissions().catch(() => {});
+
+  const permissionRequestHandler = (webContents, permission, callback, details) => {
+    const origin = details && details.requestingUrl ? new URL(details.requestingUrl).origin : (webContents.getURL && webContents.getURL()) || 'unknown';
+    const key = `${origin}|${permission}`;
+
+    if (permissionsStore.has(key)) {
+      return callback(permissionsStore.get(key));
+    }
+
+    // Only prompt for geolocation and media (camera/microphone)
+    const allowedTypes = ['media', 'geolocation'];
+    if (!allowedTypes.includes(permission)) {
+      return callback(false);
+    }
+
+    const requestId = `${Date.now()}-${Math.random()}`;
+    mainWindow.webContents.send('permission-request', { requestId, permission, origin, mediaTypes: details.mediaTypes || [] });
+
+    const timeout = setTimeout(() => {
+      callback(false);
+      ipcMain.removeListener('permission-response', responseHandler);
+    }, 30000);
+
+    const responseHandler = (event, resp) => {
+      if (resp && resp.requestId === requestId) {
+        clearTimeout(timeout);
+        permissionsStore.set(key, !!resp.allow);
+        savePermissions().catch(err => console.error('savePermissions error', err));
+        callback(!!resp.allow);
+        ipcMain.removeListener('permission-response', responseHandler);
+      }
+    };
+
+    ipcMain.on('permission-response', responseHandler);
+  };
+
+  session.defaultSession.setPermissionRequestHandler(permissionRequestHandler);
+
+  // Exposed helpers for renderer to check or request permission programmatically
+  ipcMain.handle('check-permission', (event, tabId, permissionType, origin) => {
+    const key = `${origin}|${permissionType}`;
+    return permissionsStore.has(key) ? permissionsStore.get(key) : false;
+  });
+
+  ipcMain.handle('request-permission', (event, tabId, permissionType, origin, force = false) => {
+    return new Promise((resolve) => {
+      const originHost = origin || 'unknown';
+      const key = `${originHost}|${permissionType}`;
+      if (permissionsStore.has(key) && !force) return resolve(permissionsStore.get(key));
+
+      const requestId = `${Date.now()}-${Math.random()}`;
+      mainWindow.webContents.send('permission-request', { requestId, permission: permissionType, origin: originHost, mediaTypes: [] });
+
+      const timeout = setTimeout(() => {
+        resolve(false);
+        ipcMain.removeListener('permission-response', responseHandler);
+      }, 30000);
+
+      const responseHandler = (event, resp) => {
+        if (resp && resp.requestId === requestId) {
+          clearTimeout(timeout);
+          permissionsStore.set(key, !!resp.allow);
+          savePermissions().catch(err => console.error('savePermissions error', err));
+          resolve(!!resp.allow);
+          ipcMain.removeListener('permission-response', responseHandler);
+        }
+      };
+
+      ipcMain.on('permission-response', responseHandler);
+    });
+  });
+
   mainWindow.webContents.on('before-input-event', (event, input) => {
     const key = input.key.toLowerCase();
 
