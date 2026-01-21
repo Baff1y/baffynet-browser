@@ -163,6 +163,18 @@ html, body, #app {
   transition: all 0.3s ease;
 }
 
+/* Visual hint when dragging a file over URL bar */
+#url-bar.drag-over {
+  outline: 2px dashed #47a3ff;
+  box-shadow: 0 0 0 4px rgba(71,163,255,0.06);
+}
+
+/* Toast for short messages */
+#baffy-toast {
+  transition: opacity 0.25s ease;
+  opacity: 0;
+}
+
 button {
   padding: 6px 12px;
   background: var(--button-bg);
@@ -310,4 +322,362 @@ webview {
 
 .extension-item:hover {
   background: var(--button-hover);
+}
+
+/* Стили для кастомных алертов */
+.custom-alert-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  animation: fadeIn 0.2s ease;
+}
+
+.custom-alert-content {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 400px;
+  max-width: 90vw;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+.custom-alert-header {
+  padding: 16px 20px;
+  background: var(--tab-active-bg);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.custom-alert-body {
+  padding: 20px;
+  color: var(--text-color);
+  line-height: 1.5;
+}
+
+.custom-alert-input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  background: var(--url-bar-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.custom-alert-actions {
+  padding: 16px 20px;
+  background: var(--tab-bg);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.custom-alert-btn {
+  padding: 8px 16px;
+  min-width: 80px;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.custom-alert-btn-primary {
+  background: #47a3ff;
+  color: white;
+}
+
+.custom-alert-btn-primary:hover {
+  background: #2d8de0;
+}
+
+.custom-alert-btn-secondary {
+  background: var(--button-bg);
+  color: var(--text-color);
+}
+
+.custom-alert-btn-secondary:hover {
+  background: var(--button-hover);
+}
+
+/* Анимации для кастомных алертов */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* ... остальные стили без изменений ... */
+
+/* Стили для кастомных алертов БРАУЗЕРА (не сайтов) */
+.custom-alert-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  animation: fadeIn 0.2s ease;
+}
+
+.custom-alert-content {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 400px;
+  max-width: 90vw;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+.custom-alert-header {
+  padding: 16px 20px;
+  background: var(--tab-active-bg);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.custom-alert-body {
+  padding: 20px;
+  color: var(--text-color);
+  line-height: 1.5;
+}
+
+.custom-alert-input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  background: var(--url-bar-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.custom-alert-actions {
+  padding: 16px 20px;
+  background: var(--tab-bg);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.custom-alert-btn {
+  padding: 8px 16px;
+  min-width: 80px;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.custom-alert-btn-primary {
+  background: #47a3ff;
+  color: white;
+}
+
+.custom-alert-btn-primary:hover {
+  background: #2d8de0;
+}
+
+.custom-alert-btn-secondary {
+  background: var(--button-bg);
+  color: var(--text-color);
+}
+
+.custom-alert-btn-secondary:hover {
+  background: var(--button-hover);
+}
+
+/* Анимации для кастомных алертов */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}/* ... существующие стили ... */
+
+/* Стили для модальных окон разрешений */
+.permission-modal .modal-content {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 25px;
+  width: 450px;
+  color: var(--text-color);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+}
+
+.permission-modal h2 {
+  margin: 0 0 15px 0;
+  font-size: 22px;
+  color: var(--text-color);
+}
+
+.permission-modal .permission-icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.permission-modal .site-info {
+  background: var(--tab-bg);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #47a3ff;
+}
+
+.permission-modal .site-url {
+  font-weight: bold;
+  color: var(--text-color);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.permission-modal .site-url::before {
+  content: "🌐";
+  margin-right: 8px;
+}
+
+.permission-modal .permission-desc {
+  color: var(--text-color);
+  line-height: 1.5;
+}
+
+.permission-modal .security-note {
+  color: #888;
+  font-size: 12px;
+  text-align: center;
+  margin: 15px 0;
+  padding: 10px;
+  background: rgba(0,0,0,0.1);
+  border-radius: 6px;
+}
+
+.permission-modal .action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.permission-modal .btn-deny {
+  flex: 1;
+  padding: 14px;
+  background: var(--button-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+
+.permission-modal .btn-deny:hover {
+  background: var(--button-hover);
+  transform: translateY(-1px);
+}
+
+.permission-modal .btn-allow {
+  flex: 1;
+  padding: 14px;
+  background: #47a3ff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+
+.permission-modal .btn-allow:hover {
+  background: #2d8de0;
+  transform: translateY(-1px);
+}
+
+.permission-modal .remember-choice {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.permission-modal .remember-choice label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-color);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.permission-modal .remember-choice input {
+  margin-right: 8px;
+}
+
+/* Анимация для появления модального окна разрешений */
+@keyframes permissionSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.permission-modal .modal-content {
+  animation: permissionSlideIn 0.3s ease-out;
 }
