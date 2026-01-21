@@ -30,5 +30,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onDownloadError: (callback) => ipcRenderer.on('download-error', callback),
   cancelDownload: (downloadId) => ipcRenderer.invoke('cancel-download', downloadId),
   openDownloadFolder: () => ipcRenderer.invoke('open-download-folder'),
-  showItemInFolder: (filePath) => ipcRenderer.invoke('show-item-in-folder', filePath)
+  showItemInFolder: (filePath) => ipcRenderer.invoke('show-item-in-folder', filePath),
+  
+  // Новые функции для системы разрешений
+  requestPermission: (tabId, permissionType, origin, force = false) => ipcRenderer.invoke('request-permission', tabId, permissionType, origin, force),
+  checkPermission: (tabId, permissionType, origin) => ipcRenderer.invoke('check-permission', tabId, permissionType, origin),
+  onPermissionRequest: (callback) => ipcRenderer.on('permission-request', callback),
+  onPermissionResponse: (callback) => ipcRenderer.on('permission-response', callback),
+  sendPermissionResponse: (requestId, allow) => ipcRenderer.send('permission-response', { requestId, allow })
 })
