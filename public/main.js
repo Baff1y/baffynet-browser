@@ -232,23 +232,9 @@ function createNewTab(url) {
   const finalUrl = url || localStorage.getItem('newTabPage') || 'https://baffynet.rf.gd'
   const tabId = tabCounter++
 
-  // If the URL is a local file (file://), open it in Explorer instead of loading in a webview
-  try {
-    if (finalUrl && finalUrl.startsWith('file://')) {
-      let filePath = finalUrl.replace(/^file:\/\//i, '')
-      // Remove leading slash on Windows paths like /C:/...
-      if (filePath.startsWith('/')) filePath = filePath.slice(1)
-      filePath = decodeURIComponent(filePath)
-      if (window.electronAPI && window.electronAPI.showItemInFolder) {
-        window.electronAPI.showItemInFolder(filePath)
-      } else if (window.electronAPI && window.electronAPI.openDownloadFolder) {
-        window.electronAPI.openDownloadFolder()
-      }
-      return
-    }
-  } catch (err) {
-    console.error('Error handling file:// URL in createNewTab:', err)
-  }
+  // Allow file:// URLs to load directly in a new tab (drop from Explorer should open here)
+  // Previously we opened file:// links in the system file explorer; now we let the webview load them.
+
 
   const tab = document.createElement('div')
   tab.className = 'tab'
@@ -393,6 +379,28 @@ function createNewTab(url) {
       console.error('webview error:', err)
     }
   })
+
+  // If the page fails to load (network / DNS / offline), show the local error page
+  try {
+    const errorPage = new URL('../baffyneterror/error.htm', window.location.href).href
+    webview.addEventListener('did-fail-load', (e) => {
+      try {
+        if (!e || !e.isMainFrame) return
+        // Avoid replacing the error page with itself
+        const failedUrl = e.validatedURL || e.url || ''
+        if (failedUrl === errorPage) return
+
+        // Load the bundled error page for main-frame failures
+        webview.src = errorPage
+        urlBar.value = failedUrl
+        updateTabTitle(tabId, 'Connection error')
+      } catch (err) {
+        console.error('did-fail-load handler error', err)
+      }
+    })
+  } catch (err) {
+    console.error('Error initializing did-fail-load handler', err)
+  }
 
   switchTab(tabId)
 }
@@ -931,6 +939,48 @@ urlBar.addEventListener('keypress', (e) => {
     }
   }
 })
+
+
+urlBar.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  urlBar.classList.add('drag-over');
+  try { e.dataTransfer.dropEffect = 'copy' } catch (err) {}
+});
+
+urlBar.addEventListener('dragleave', (e) => {
+  urlBar.classList.remove('drag-over');
+});
+
+urlBar.addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  urlBar.classList.remove('drag-over');
+
+  try {
+    // If files are dropped from Explorer, use the first file path
+    const files = e.dataTransfer && e.dataTransfer.files;
+    console.debug('URL bar drop event, files:', files);
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file && file.path) {
+        const normalized = file.path.replace(/\\/g, '/');
+        const fileUrl = encodeURI('file:///' + normalized);
+        console.debug('Opening dropped file in new tab:', fileUrl);
+        try { createNewTab(fileUrl); } catch (err) { console.error('createNewTab error:', err); }
+        return;
+      }
+    }
+
+    // Otherwise, try plain text / uri list drops
+    const text = (e.dataTransfer && (e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain'))) || '';
+    console.debug('URL bar drop event, text:', text);
+    if (text && text.trim()) {
+      try { createNewTab(text.trim()); } catch (err) { console.error('createNewTab error:', err); }
+    }
+  } catch (err) {
+    console.error('Error handling drop on URL bar:', err);
+  }
+});
 
 // Zoom with Ctrl/Cmd + mouse wheel
 ;(function setupWheelZoom() {
