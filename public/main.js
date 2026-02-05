@@ -380,27 +380,7 @@ function createNewTab(url) {
     }
   })
 
-  // If the page fails to load (network / DNS / offline), show the local error page
-  try {
-    const errorPage = new URL('../baffyneterror/error.htm', window.location.href).href
-    webview.addEventListener('did-fail-load', (e) => {
-      try {
-        if (!e || !e.isMainFrame) return
-        // Avoid replacing the error page with itself
-        const failedUrl = e.validatedURL || e.url || ''
-        if (failedUrl === errorPage) return
 
-        // Load the bundled error page for main-frame failures
-        webview.src = errorPage
-        urlBar.value = failedUrl
-        updateTabTitle(tabId, 'Connection error')
-      } catch (err) {
-        console.error('did-fail-load handler error', err)
-      }
-    })
-  } catch (err) {
-    console.error('Error initializing did-fail-load handler', err)
-  }
 
   switchTab(tabId)
 }
