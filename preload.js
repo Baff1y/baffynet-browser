@@ -37,5 +37,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkPermission: (tabId, permissionType, origin) => ipcRenderer.invoke('check-permission', tabId, permissionType, origin),
   onPermissionRequest: (callback) => ipcRenderer.on('permission-request', callback),
   onPermissionResponse: (callback) => ipcRenderer.on('permission-response', callback),
-  sendPermissionResponse: (requestId, allow) => ipcRenderer.send('permission-response', { requestId, allow })
+  sendPermissionResponse: (requestId, allow) => ipcRenderer.send('permission-response', { requestId, allow }),
+  
+  // Функции для блокировщика сайтов
+  onOpenBlocker: (callback) => ipcRenderer.on('open-blocker', callback),
+  getBlockedSites: () => ipcRenderer.invoke('get-blocked-sites'),
+  addBlockedSite: (site) => ipcRenderer.invoke('add-blocked-site', site),
+  removeBlockedSite: (site) => ipcRenderer.invoke('remove-blocked-site', site),
+  isSiteBlocked: (url) => ipcRenderer.invoke('is-site-blocked', url)
 })
