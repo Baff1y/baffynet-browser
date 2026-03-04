@@ -4,6 +4,7 @@ const urlBar = document.getElementById('url-bar')
 let tabCounter = 1
 let closedTabsHistory = []
 let extensionsList = []
+let blockedSitesList = []
 
 // Загружаем стартовую страницу из настроек
 const defaultStartPage = localStorage.getItem('startPage') || 'https://baffynet.rf.gd'
@@ -228,8 +229,80 @@ function showThemePanel() {
   }
 }
 
+
+function showBlockedPage() {
+  const tabId = tabCounter++
+  
+  const tab = document.createElement('div')
+  tab.className = 'tab'
+  tab.dataset.tabId = tabId
+  tab.innerHTML = `
+    <img class="tab-favicon" src="https://i.ibb.co/v4PmyTNq/image.png">
+    <span class="tab-title">Blocked</span>
+    <span class="tab-close" data-tab-id="${tabId}">×</span>
+  `
+  tabsContainer.insertBefore(tab, document.getElementById('new-tab'))
+
+  const webview = document.createElement('webview')
+  webview.setAttribute('allowpopups', 'true')
+  webview.dataset.tabId = tabId
+  webview.style.display = 'none'
+  
+  const blockedHtml = `
+    <html>
+    <head>
+      <title>Blocked</title>
+      <style>
+        body {
+          background: #25242b;
+          color: #f0f0f0;
+          font-family: sans-serif;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          margin: 0;
+          text-align: center;
+        }
+        h1 { font-size: 48px; margin-bottom: 10px; }
+        p { color: #888; font-size: 16px; }
+        .hint { margin-top: 20px; color: #666; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div>
+        <h1>🚫 Site Blocked</h1>
+        <p>This site has been blocked by BaffyNet Browser.</p>
+        <p class="hint">Press Ctrl+B to manage blocked sites</p>
+      </div>
+    </body>
+    </html>
+  `
+  
+  webview.src = 'data:text/html;charset=utf-8,' + encodeURIComponent(blockedHtml)
+  webviewsContainer.appendChild(webview)
+
+  switchTab(tabId)
+}
+
 function createNewTab(url) {
   const finalUrl = url || localStorage.getItem('newTabPage') || 'https://baffynet.rf.gd'
+  
+  // Check if URL is blocked before loading
+  if (window.electronAPI && window.electronAPI.isSiteBlocked) {
+    window.electronAPI.isSiteBlocked(finalUrl).then(isBlocked => {
+      if (isBlocked) {
+        showBlockedPage();
+        return;
+      }
+      createNewTabInternal(finalUrl);
+    });
+  } else {
+    createNewTabInternal(finalUrl);
+  }
+}
+
+function createNewTabInternal(finalUrl) {
   const tabId = tabCounter++
 
   // Allow file:// URLs to load directly in a new tab (drop from Explorer should open here)
@@ -379,8 +452,6 @@ function createNewTab(url) {
       console.error('webview error:', err)
     }
   })
-
-
 
   switchTab(tabId)
 }
@@ -754,6 +825,112 @@ function showExtensionPopup(extension) {
   document.body.appendChild(popup)
 }
 
+// ==================== BLOCKER PANEL ====================
+async function showBlockerPanel() {
+  // If already open, remove and recreate
+  const existingModal = document.getElementById('blocker-panel-modal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  // Load current blocked sites
+  if (window.electronAPI && window.electronAPI.getBlockedSites) {
+    blockedSitesList = await window.electronAPI.getBlockedSites();
+  }
+
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.id = 'blocker-panel-modal';
+
+  const content = document.createElement('div');
+  content.className = 'modal-content';
+  content.style.maxWidth = '500px';
+
+  const sitesListHtml = blockedSitesList.length > 0 
+    ? blockedSitesList.map(site => `
+        <div class="blocked-site-item" style="display:flex;justify-content:space-between;align-items:center;padding:8px;margin:5px 0;background:var(--tab-bg);border-radius:4px;">
+          <span style="color:var(--text-color);">${site}</span>
+          <button class="remove-site-btn" data-site="${site}" style="padding:4px 8px;background:#ff4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">×</button>
+        </div>
+      `).join('')
+    : '<div style="text-align:center;color:#888;padding:20px;">No blocked sites</div>';
+
+  content.innerHTML = `
+    <h2> SmartBlocker</h2>
+    <p style="color:var(--text-color);font-size:14px;margin-bottom:15px;">
+      Add sites you want to block. They won't load in BaffyNet.<br>
+      <small style="color:#888;">Press Ctrl+B to open this panel anytime</small>
+    </p>
+    
+    <div style="display:flex;gap:8px;margin-bottom:15px;">
+      <input type="text" id="blocker-site-input" placeholder="example.com" style="flex:1;padding:10px;border-radius:4px;border:1px solid var(--border-color);background:var(--url-bar-bg);color:var(--text-color);">
+      <button id="blocker-add-btn" style="padding:10px 20px;background:#47a3ff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">Add</button>
+    </div>
+    
+    <div id="blocked-sites-list" style="max-height:250px;overflow-y:auto;border:1px solid var(--border-color);border-radius:4px;padding:5px;">
+      ${sitesListHtml}
+    </div>
+    
+    <div class="modal-actions" style="margin-top:15px;">
+      <button id="blocker-close-btn">Close</button>
+    </div>
+  `;
+
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+
+  // Add site handler
+  const addBtn = document.getElementById('blocker-add-btn');
+  const siteInput = document.getElementById('blocker-site-input');
+  
+  if (addBtn && siteInput) {
+    addBtn.onclick = async () => {
+      const site = siteInput.value.trim();
+      if (site && window.electronAPI && window.electronAPI.addBlockedSite) {
+        const success = await window.electronAPI.addBlockedSite(site);
+        if (success) {
+          siteInput.value = '';
+          showBlockerPanel();
+        } else {
+          browserAlert('Site already blocked or invalid', 'BaffyNet');
+        }
+      }
+    };
+    
+    siteInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        addBtn.click();
+      }
+    });
+  }
+
+  // Remove site handlers
+  document.querySelectorAll('.remove-site-btn').forEach(btn => {
+    btn.onclick = async () => {
+      const site = btn.dataset.site;
+      if (site && window.electronAPI && window.electronAPI.removeBlockedSite) {
+        await window.electronAPI.removeBlockedSite(site);
+        showBlockerPanel();
+      }
+    };
+  });
+
+  // Close handler
+  const closeBtn = document.getElementById('blocker-close-btn');
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      modal.remove();
+    };
+  }
+
+  // Click outside to close
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  });
+}
+
 window.addEventListener('message', (ev) => {
   try {
     const msg = ev.data
@@ -1102,6 +1279,10 @@ if (window.electronAPI) {
 
   window.electronAPI.onOpenExtensionPopup((event, extension) => {
     showExtensionPopup(extension)
+  })
+
+  window.electronAPI.onOpenBlocker(() => {
+    showBlockerPanel()
   })
 }
 
