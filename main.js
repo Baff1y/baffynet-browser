@@ -315,9 +315,13 @@ function createWindow() {
       mainWindow.webContents.send('create-new-tab', 'https://baffynet.rf.gd/shop.html');
     }
 
-    if (input.control && key === '7') {
+if (input.control && key === '7') {
       event.preventDefault();
       mainWindow.webContents.send('create-new-tab', 'https://baffynet.rf.gd/test.html');
+    }
+    if (input.control && key === 'b') {
+      event.preventDefault();
+      mainWindow.webContents.send('open-blocker');
     }
   });
 
@@ -464,6 +468,7 @@ ipcMain.handle('cancel-download', (event, downloadId) => {
 ipcMain.handle('open-download-folder', async () => {
   try {
     const downloadsPath = app.getPath('downloads');
+    // Downloads folder is now open
     await shell.openPath(downloadsPath);
     return true;
   } catch (err) {
@@ -475,7 +480,6 @@ ipcMain.handle('open-download-folder', async () => {
 // Show an item in folder (highlight the file)
 ipcMain.handle('show-item-in-folder', (event, filePath) => {
   try {
-    // shell.showItemInFolder returns a boolean in some Electron versions; just call it
     shell.showItemInFolder(filePath);
     return true;
   } catch (err) {
@@ -483,3 +487,124 @@ ipcMain.handle('show-item-in-folder', (event, filePath) => {
     return false;
   }
 });
+
+// ==================== BLOCKER SYSTEM ====================
+let blockedSites = new Set();
+let blockerListener = null;
+let blocklistFile;
+
+function loadBlocklist() {
+  return (async () => {
+    try {
+      const content = await fs.readFile(blocklistFile, 'utf8');
+      const sites = JSON.parse(content || '[]');
+      blockedSites.clear();
+      sites.forEach(site => blockedSites.add(site.toLowerCase()));
+      console.log('Blocklist loaded:', Array.from(blockedSites));
+      applyBlockerToSession();
+    } catch (e) {
+      console.log('No blocklist file found, starting fresh');
+      applyBlockerToSession();
+    }
+  })();
+}
+
+function saveBlocklist() {
+  return (async () => {
+    try {
+      await fs.writeFile(blocklistFile, JSON.stringify(Array.from(blockedSites), null, 2), 'utf8');
+      console.log('Blocklist saved');
+    } catch (err) {
+      console.error('Error saving blocklist:', err);
+    }
+  })();
+}
+
+function isUrlBlocked(url) {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    for (const blocked of blockedSites) {
+      if (hostname === blocked || hostname.endsWith('.' + blocked)) {
+        return true;
+      }
+    }
+  } catch (e) {}
+  return false;
+}
+
+function applyBlockerToSession() {
+  if (!session.defaultSession) return;
+  if (blockerListener) {
+    try { session.defaultSession.webRequest.onBeforeRequest.removeListener(blockerListener); } catch (e) {}
+  }
+  blockerListener = (details, callback) => {
+    try {
+      const url = new URL(details.url);
+      const hostname = url.hostname.toLowerCase();
+      for (const blocked of blockedSites) {
+        if (hostname === blocked || hostname.endsWith('.' + blocked)) {
+          console.log('Blocked request to:', hostname);
+          callback({ cancel: true });
+          return;
+        }
+      }
+    } catch (e) {}
+    callback({ cancel: false });
+  };
+  session.defaultSession.webRequest.onBeforeRequest({ urls: ['<all_urls>'] }, blockerListener);
+}
+
+function setupNavigationBlocker() {
+  if (!session.defaultSession) return;
+  session.defaultSession.webContents.on('will-navigate', (webContents, url) => {
+    if (isUrlBlocked(url)) {
+      console.log('Blocked navigation to:', url);
+      webContents.stop();
+      webContents.loadURL('data:text/html,' + encodeURIComponent(
+        '<html><head><title>Blocked</title></head><body style="background:#25242b;color:#f0f0f0;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;"><div style="text-align:center;"><h1>(X) SmartBlocker</h1><p>This site has been blocked by BaffyNet Browser.</p><p style="color:#888;">Press Ctrl+B to manage blocked sites</p></div></body></html>'
+      ));
+    }
+  });
+}
+
+ipcMain.handle('get-blocked-sites', () => {
+  return Array.from(blockedSites);
+});
+
+ipcMain.handle('add-blocked-site', async (event, site) => {
+  if (site && site.trim()) {
+    const normalized = site.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
+    if (normalized && !blockedSites.has(normalized)) {
+      blockedSites.add(normalized);
+      await saveBlocklist();
+      applyBlockerToSession();
+      console.log('Added to blocklist:', normalized);
+      return true;
+    }
+  }
+  return false;
+});
+
+ipcMain.handle('remove-blocked-site', async (event, site) => {
+  if (site && blockedSites.has(site.toLowerCase())) {
+    blockedSites.delete(site.toLowerCase());
+    await saveBlocklist();
+    applyBlockerToSession();
+    console.log('Removed from blocklist:', site);
+    return true;
+  }
+  return false;
+});
+
+ipcMain.handle('is-site-blocked', (event, url) => {
+  return isUrlBlocked(url);
+});
+
+// Initialize blocker when app is ready
+app.whenReady().then(() => {
+  blocklistFile = path.join(app.getPath('userData'), 'blocklist.json');
+  loadBlocklist();
+  setupNavigationBlocker();
+});
+
