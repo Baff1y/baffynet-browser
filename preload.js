@@ -44,5 +44,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getBlockedSites: () => ipcRenderer.invoke('get-blocked-sites'),
   addBlockedSite: (site) => ipcRenderer.invoke('add-blocked-site', site),
   removeBlockedSite: (site) => ipcRenderer.invoke('remove-blocked-site', site),
-  isSiteBlocked: (url) => ipcRenderer.invoke('is-site-blocked', url)
+  isSiteBlocked: (url) => ipcRenderer.invoke('is-site-blocked', url),
+  
+  // Ctrl+K menu handler
+  onCon: (callback) => ipcRenderer.on('con', callback),
+  
+  // Ctrl+H hotkeys menu handler
+  onOpenHotkeysMenu: (callback) => ipcRenderer.on('open-hotkeys-menu', callback),
+  
+  // Ctrl+X split view handlers
+  onOpenSplitView: (callback) => ipcRenderer.on('open-split-view', callback),
+  onExitSplitView: (callback) => ipcRenderer.on('exit-split-view', callback)
 })
