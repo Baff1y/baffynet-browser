@@ -57,3 +57,42 @@ const { ipcRenderer } = require('electron')
     } catch (e) { return null }
   }
 })()
+
+// Fullscreen API passthrough for webview
+const { ipcRenderer } = require('electron');
+['requestFullscreen', 'webkitRequestFullscreen', 'webkitRequestFullScreen'].forEach(method => {
+  Element.prototype[method] = function() {
+    // Try all possible fullscreen methods
+    try {
+      const fn = this[method] || this.requestFullscreen || this.webkitRequestFullscreen || this.webkitRequestFullScreen;
+      if (fn) return fn.call(this);
+    } catch (e) {
+      console.error('Fullscreen error:', e);
+    }
+    // Fallback: notify host
+    ipcRenderer.sendToHost('webview-fullscreen-request');
+    return Promise.reject(new Error('Fullscreen not supported'));
+  };
+});
+
+['exitFullscreen', 'webkitExitFullscreen', 'webkitExitFullScreen'].forEach(method => {
+  Document.prototype[method] = function() {
+    try {
+      const fn = this[method] || this.exitFullscreen || this.webkitExitFullscreen || this.webkitExitFullScreen;
+      if (fn) return fn.call(this);
+    } catch (e) {
+      console.error('Exit fullscreen error:', e);
+    }
+    ipcRenderer.sendToHost('webview-fullscreen-exit');
+    return Promise.reject(new Error('Exit fullscreen not supported'));
+  };
+});
+
+// Also listen for fullscreen changes
+document.addEventListener('fullscreenchange', () => {
+  ipcRenderer.sendToHost('webview-fullscreen-change', document.fullscreenElement !== null);
+});
+
+document.addEventListener('webkitfullscreenchange', () => {
+  ipcRenderer.sendToHost('webview-fullscreen-change', document.webkitFullscreenElement !== null);
+});
