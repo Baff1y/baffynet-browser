@@ -283,6 +283,10 @@ function createWindow() {
       event.preventDefault();
       mainWindow.webContents.send('open-url-prompt');
     }
+    if (input.control && key === 'h') {
+      event.preventDefault();
+      mainWindow.webContents.send('open-hotkeys-menu');
+    }
     if (input.control && key === 'j') {
       event.preventDefault();
       mainWindow.webContents.send('open-search-engine-prompt');
@@ -322,6 +326,14 @@ if (input.control && key === '7') {
     if (input.control && key === 'b') {
       event.preventDefault();
       mainWindow.webContents.send('open-blocker');
+    }
+    if (input.control && key === 'x') {
+      event.preventDefault();
+      mainWindow.webContents.send('open-split-view');
+    }
+    if (input.control && input.shift && key === 'x') {
+      event.preventDefault();
+      mainWindow.webContents.send('exit-split-view');
     }
   });
 
@@ -442,6 +454,14 @@ ipcMain.on('undo-action', () => {
 
 ipcMain.on('switch-to-tab', (event, index) => {
   mainWindow.webContents.send('switch-to-tab', index);
+});
+
+ipcMain.on('open-split-view', () => {
+  mainWindow.webContents.send('open-split-view');
+});
+
+ipcMain.on('exit-split-view', () => {
+  mainWindow.webContents.send('exit-split-view');
 });
 
 ipcMain.on('update-title', (event, title) => {
@@ -607,4 +627,3 @@ app.whenReady().then(() => {
   loadBlocklist();
   setupNavigationBlocker();
 });
-
