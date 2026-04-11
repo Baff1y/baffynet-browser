@@ -1,11 +1,46 @@
 const { app, BrowserWindow, Menu, ipcMain, session, shell, globalShortcut } = require('electron');
 const path = require('path');
-const fs = require('fs').promises;
+const fs = require('fs');
+const fsPromises = require('fs').promises;
 
 let mainWindow;
 let extensions = [];
 const activeDownloads = new Map();
 let deeplinkingUrl = null;
+let historyEnabled = true;
+let browsingHistory = [];
+let historyFile;
+let keybindsFile;
+let blocklistFile;
+
+async function loadHistory() {
+  if (!historyFile) return;
+  try {
+    const content = await fsPromises.readFile(historyFile, 'utf8');
+    browsingHistory = JSON.parse(content || '[]');
+  } catch (e) {
+    browsingHistory = [];
+  }
+}
+
+async function saveHistory() {
+  if (!historyFile) return;
+  try {
+    await fsPromises.writeFile(historyFile, JSON.stringify(browsingHistory, null, 2), 'utf8');
+  } catch (err) {
+    console.error('saveHistory error', err);
+  }
+}
+
+function addToHistory(url, title) {
+  if (!historyEnabled || !url || url.startsWith('javascript:') || url.startsWith('about:') || url.startsWith('data:')) return;
+  const entry = { url, title: title || url, time: Date.now() };
+  browsingHistory = browsingHistory.filter(h => h.url !== url);
+  browsingHistory.unshift(entry);
+  if (browsingHistory.length > 500) browsingHistory = browsingHistory.slice(0, 500);
+  saveHistory().catch(err => console.error('saveHistory error', err));
+  if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('history-updated', browsingHistory);
+}
 
 // Обработка single-instance и deep links (Windows): если приложение уже запущено,
 // вторичный инстанс передаёт URL в основной процесс через событие 'second-instance'.
@@ -76,6 +111,13 @@ const setupGlobalWindowOpenHandler = () => {
         }
         return { action: 'deny' }
       })
+      
+      // Track page navigation for history
+      contents.on('did-finish-load', () => {
+        const url = contents.getURL();
+        const title = contents.getTitle();
+        addToHistory(url, title);
+      });
     } catch (err) {
       // В некоторых старых/специальных webContents метод может отсутствовать
     }
@@ -172,7 +214,7 @@ function createWindow() {
 
   async function loadPermissions() {
     try {
-      const content = await fs.readFile(permissionsFile, 'utf8');
+      const content = await fsPromises.readFile(permissionsFile, 'utf8');
       const obj = JSON.parse(content || '{}');
       for (const k of Object.keys(obj)) permissionsStore.set(k, obj[k]);
     } catch (e) {
@@ -184,7 +226,7 @@ function createWindow() {
     try {
       const obj = {};
       for (const [k, v] of permissionsStore) obj[k] = v;
-      await fs.writeFile(permissionsFile, JSON.stringify(obj, null, 2), 'utf8');
+      await fsPromises.writeFile(permissionsFile, JSON.stringify(obj, null, 2), 'utf8');
     } catch (err) {
       console.error('savePermissions error', err);
     }
@@ -266,76 +308,76 @@ function createWindow() {
 
   mainWindow.webContents.on('before-input-event', (event, input) => {
     const key = input.key.toLowerCase();
+    const keybinds = getKeybinds();
 
-    if (input.control && key === 'd') {
-      event.preventDefault();
-      mainWindow.webContents.send('show-devtools');
-    }
-    if (input.control && key === 't') {
-      event.preventDefault();
-      mainWindow.webContents.send('create-new-tab');
-    }
-    if (input.control && key === 'w') {
-      event.preventDefault();
-      mainWindow.webContents.send('close-current-tab');
-    }
-    if (input.control && key === 'q') {
-      event.preventDefault();
-      mainWindow.webContents.send('open-url-prompt');
-    }
-    if (input.control && key === 'h') {
-      event.preventDefault();
-      mainWindow.webContents.send('open-hotkeys-menu');
-    }
-    if (input.control && key === 'j') {
-      event.preventDefault();
-      mainWindow.webContents.send('open-search-engine-prompt');
-    }
-    if (input.control && key === 'i') {
-      event.preventDefault();
-      mainWindow.webContents.send('toggle-theme');
-    }
-    if (input.control && key === 'z') {
-      event.preventDefault();
-      mainWindow.webContents.send('undo-action');
-    }
-    if (input.control && /^[1-9]$/.test(key)) {
-      event.preventDefault();
-      mainWindow.webContents.send('switch-to-tab', parseInt(key) - 1);
-    }
-    if (input.control && key === 'r') {
-      event.preventDefault();
-      mainWindow.webContents.send('create-new-tab', `https://baffynet.rf.gd/help.html`);
-    }
-    if (input.control && key === 'm') {
-      event.preventDefault();
-      shell.openPath('C:/Program Files/BaffyNet/PrivacyNet.exe')
-        .then(result => {
-          if (result) console.error('error while opening:', result);
-        });
-    }
-    if (input.control && input.shift && key === 'e') {
-      event.preventDefault();
-      mainWindow.webContents.send('create-new-tab', 'https://baffynet.rf.gd/shop.html');
-    }
-
-if (input.control && key === '7') {
-      event.preventDefault();
-      mainWindow.webContents.send('create-new-tab', 'https://baffynet.rf.gd/test.html');
-    }
-    if (input.control && key === 'b') {
-      event.preventDefault();
-      mainWindow.webContents.send('open-blocker');
-    }
-    if (input.control && key === 'x') {
-      event.preventDefault();
-      mainWindow.webContents.send('open-split-view');
-    }
-    if (input.control && input.shift && key === 'x') {
-      event.preventDefault();
-      mainWindow.webContents.send('exit-split-view');
+    for (const [name, binding] of Object.entries(keybinds)) {
+      if (input.control === binding.ctrl && input.shift === binding.shift && key === binding.key) {
+        event.preventDefault();
+        handleKeybindsAction(binding.action);
+        return;
+      }
     }
   });
+
+  function handleKeybindsAction(action) {
+    switch (action) {
+      case 'open-help':
+        mainWindow.webContents.send('create-new-tab', 'https://baffynet.rf.gd/help.html');
+        break;
+      case 'toggle-theme':
+        mainWindow.webContents.send('toggle-theme');
+        break;
+      case 'open-devtools':
+        mainWindow.webContents.send('show-devtools');
+        break;
+      case 'open-homepage':
+        mainWindow.webContents.send('open-url-prompt');
+        break;
+      case 'open-search':
+        mainWindow.webContents.send('open-search-engine-prompt');
+        break;
+      case 'open-privacy':
+        shell.openPath('C:/Program Files/BaffyNet/PrivacyNet.exe')
+          .then(result => { if (result) console.error('error while opening:', result); });
+        break;
+      case 'set-default':
+        mainWindow.webContents.send('create-new-tab', 'https://baffynet.rf.gd/test.html');
+        break;
+      case 'open-addons':
+        mainWindow.webContents.send('create-new-tab', 'https://baffynet.rf.gd/shop.html');
+        break;
+      case 'open-blocker':
+        mainWindow.webContents.send('open-blocker');
+        break;
+      case 'open-tabs':
+        mainWindow.webContents.send('con');
+        break;
+      case 'open-keybinds':
+        mainWindow.webContents.send('open-hotkeys-menu');
+        break;
+      case 'rename-keybinds':
+        mainWindow.webContents.send('rename-keybinds');
+        break;
+      case 'new-tab':
+        mainWindow.webContents.send('create-new-tab');
+        break;
+      case 'close-tab':
+        mainWindow.webContents.send('close-current-tab');
+        break;
+      case 'switch-tab-0':
+      case 'switch-tab-1':
+      case 'switch-tab-2':
+      case 'switch-tab-3':
+      case 'switch-tab-4':
+      case 'switch-tab-5':
+      case 'switch-tab-6':
+      case 'switch-tab-7':
+      case 'switch-tab-8':
+        const tabIndex = parseInt(action.replace('switch-tab-', ''));
+        mainWindow.webContents.send('switch-to-tab', tabIndex);
+        break;
+    }
+  }
 
   Menu.setApplicationMenu(null);
 }
@@ -364,19 +406,19 @@ async function loadExtensions() {
   try {
     const extensionsPath = 'C:\\Program Files\\BaffyNet\\Addons';
     try {
-      await fs.access(extensionsPath);
+      await fsPromises.access(extensionsPath);
     } catch {
-      await fs.mkdir(extensionsPath, { recursive: true });
+      await fsPromises.mkdir(extensionsPath, { recursive: true });
     }
 
-    const items = await fs.readdir(extensionsPath, { withFileTypes: true });
+    const items = await fsPromises.readdir(extensionsPath, { withFileTypes: true });
     extensions = [];
 
     for (const item of items) {
       if (item.isDirectory()) {
         const manifestPath = path.join(extensionsPath, item.name, 'manifest.json');
         try {
-          const manifestData = await fs.readFile(manifestPath, 'utf8');
+          const manifestData = await fsPromises.readFile(manifestPath, 'utf8');
           const manifest = JSON.parse(manifestData);
           extensions.push({
             id: item.name,
@@ -474,14 +516,72 @@ ipcMain.on('check-tabs-count', (event, count) => {
   }
 });
 
-ipcMain.handle('cancel-download', (event, downloadId) => {
-  const download = activeDownloads.get(downloadId);
-  if (download && download.item) {
-    download.item.cancel();
-    activeDownloads.delete(downloadId);
-    return true;
+ipcMain.handle('get-history', () => browsingHistory);
+ipcMain.handle('toggle-history', () => { historyEnabled = !historyEnabled; return historyEnabled; });
+ipcMain.handle('is-history-enabled', () => historyEnabled);
+ipcMain.handle('clear-history', async () => { browsingHistory = []; await saveHistory(); return true; });
+ipcMain.handle('remove-history-item', async (event, url) => { browsingHistory = browsingHistory.filter(h => h.url !== url); await saveHistory(); return true; });
+
+// Default keybinds (classic BaffyNet shortcuts)
+const defaultKeybinds = {
+  help: { key: 'r', ctrl: true, shift: false, action: 'open-help' },
+  theme: { key: 'i', ctrl: true, shift: false, action: 'toggle-theme' },
+  devtools: { key: 'd', ctrl: true, shift: false, action: 'open-devtools' },
+  homepage: { key: 'q', ctrl: true, shift: false, action: 'open-homepage' },
+  search: { key: 'j', ctrl: true, shift: false, action: 'open-search' },
+  privacy: { key: 'm', ctrl: true, shift: false, action: 'open-privacy' },
+  defaultBrowser: { key: '7', ctrl: true, shift: false, action: 'set-default' },
+  addons: { key: 'e', ctrl: true, shift: true, action: 'open-addons' },
+  blocker: { key: 'b', ctrl: true, shift: false, action: 'open-blocker' },
+  tabs: { key: 'k', ctrl: true, shift: false, action: 'open-tabs' },
+  keybinds: { key: 'h', ctrl: true, shift: false, action: 'open-keybinds' },
+  newTab: { key: 't', ctrl: true, shift: false, action: 'new-tab' },
+  closeTab: { key: 'w', ctrl: true, shift: false, action: 'close-tab' },
+  switchTab1: { key: '1', ctrl: true, shift: false, action: 'switch-tab-0' },
+  switchTab2: { key: '2', ctrl: true, shift: false, action: 'switch-tab-1' },
+  switchTab3: { key: '3', ctrl: true, shift: false, action: 'switch-tab-2' },
+  switchTab4: { key: '4', ctrl: true, shift: false, action: 'switch-tab-3' },
+  switchTab5: { key: '5', ctrl: true, shift: false, action: 'switch-tab-4' },
+  switchTab6: { key: '6', ctrl: true, shift: false, action: 'switch-tab-5' },
+  switchTab7: { key: '7', ctrl: true, shift: false, action: 'switch-tab-6' },
+  switchTab8: { key: '8', ctrl: true, shift: false, action: 'switch-tab-7' },
+  switchTab9: { key: '9', ctrl: true, shift: false, action: 'switch-tab-8' }
+};
+
+let customKeybinds = {};
+
+async function loadKeybinds() {
+  if (!keybindsFile) return;
+  try {
+    const content = await fsPromises.readFile(keybindsFile, 'utf8');
+    customKeybinds = JSON.parse(content || '{}');
+  } catch (e) {
+    customKeybinds = {};
+    await saveKeybinds();
   }
-  return false;
+}
+
+async function saveKeybinds() {
+  if (!keybindsFile) return;
+  try {
+    await fsPromises.writeFile(keybindsFile, JSON.stringify(customKeybinds, null, 2), 'utf8');
+  } catch (err) {
+    console.error('saveKeybinds error', err);
+  }
+}
+
+function getKeybinds() {
+  return { ...defaultKeybinds, ...customKeybinds };
+}
+
+ipcMain.handle('get-keybinds', () => getKeybinds());
+ipcMain.handle('set-keybinds', async (event, keybinds) => {
+  customKeybinds = keybinds;
+  await saveKeybinds();
+  if (mainWindow) {
+    mainWindow.webContents.send('keybinds-updated', getKeybinds());
+  }
+  return true;
 });
 
 // Open the user's downloads folder
@@ -511,12 +611,11 @@ ipcMain.handle('show-item-in-folder', (event, filePath) => {
 // ==================== BLOCKER SYSTEM ====================
 let blockedSites = new Set();
 let blockerListener = null;
-let blocklistFile;
 
 function loadBlocklist() {
   return (async () => {
     try {
-      const content = await fs.readFile(blocklistFile, 'utf8');
+      const content = await fsPromises.readFile(blocklistFile, 'utf8');
       const sites = JSON.parse(content || '[]');
       blockedSites.clear();
       sites.forEach(site => blockedSites.add(site.toLowerCase()));
@@ -532,7 +631,7 @@ function loadBlocklist() {
 function saveBlocklist() {
   return (async () => {
     try {
-      await fs.writeFile(blocklistFile, JSON.stringify(Array.from(blockedSites), null, 2), 'utf8');
+      await fsPromises.writeFile(blocklistFile, JSON.stringify(Array.from(blockedSites), null, 2), 'utf8');
       console.log('Blocklist saved');
     } catch (err) {
       console.error('Error saving blocklist:', err);
@@ -622,8 +721,21 @@ ipcMain.handle('is-site-blocked', (event, url) => {
 });
 
 // Initialize blocker when app is ready
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  historyFile = path.join(app.getPath('userData'), 'history.json');
+  keybindsFile = path.join(app.getPath('userData'), 'keybinds.json');
   blocklistFile = path.join(app.getPath('userData'), 'blocklist.json');
+  
   loadBlocklist();
   setupNavigationBlocker();
+  loadHistory().catch(() => {});
+  loadKeybinds().catch(() => {});
+
+  // Set Firefox as default useragent for the entire session
+  const firefoxUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0';
+  session.defaultSession.setUserAgent(firefoxUA);
+  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    details.requestHeaders['User-Agent'] = firefoxUA;
+    callback({ requestHeaders: details.requestHeaders });
+  });
 });
