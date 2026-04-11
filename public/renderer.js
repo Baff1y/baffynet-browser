@@ -210,4 +210,249 @@ window.addEventListener('DOMContentLoaded', () => {
   window.showAlert = showAlert;
   window.showConfirm = showConfirm;
   window.showPrompt = showPrompt;
+  
+  // Alias for compatibility
+  window.browserAlert = (msg, title) => showAlert(msg);
+  window.browserConfirm = (msg, title) => showConfirm(msg);
+  window.browserPrompt = (msg, def) => showPrompt(msg, def);
+
+  // History panel
+  const HISTORY_ENABLED_KEY = 'historyEnabled';
+  const STORAGE_KEY = 'browsingHistory';
+
+  function loadFromLocalStorage() {
+    if (!localStorageWorks) return [];
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) { return []; }
+  }
+
+  function saveToLocalStorage(data) {
+    if (!localStorageWorks) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) { console.log('save error:', e); }
+  }
+
+  function getHistoryEnabled() {
+    const stored = localStorage.getItem(HISTORY_ENABLED_KEY);
+    return stored === null ? true : stored === 'true';
+  }
+
+  function setHistoryEnabled(enabled) {
+    localStorage.setItem(HISTORY_ENABLED_KEY, enabled.toString());
+  }
+
+  checkLocalStorage();
+  historyData = loadFromLocalStorage();
+  console.log('Initial historyData:', historyData.length);
+  saveToLocalStorage(historyData);
+
+  (async function syncWithElectron() {
+    if (window.electronAPI && window.electronAPI.getHistory) {
+      const electronHistory = await window.electronAPI.getHistory();
+      if (electronHistory && electronHistory.length > 0) {
+        const merged = [...historyData];
+        for (const item of electronHistory) {
+          if (!merged.find(h => h.url === item.url)) {
+            merged.push(item);
+          }
+        }
+        historyData = merged.slice(0, 500);
+        saveToLocalStorage(historyData);
+        console.log('Synced with electron, total:', historyData.length);
+      }
+    }
+    saveToLocalStorage(historyData);
+  })();
+
+  setInterval(() => {
+    if (historyData.length > 0) {
+      saveToLocalStorage(historyData);
+    }
+  }, 2000);
+
+  function buildHistoryPanel() {
+    let panel = document.getElementById('history-panel');
+    if (panel) return panel;
+
+    panel = document.createElement('div');
+    panel.id = 'history-panel';
+    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:100001;';
+    panel.innerHTML = `
+      <div id="history-box" style="background:var(--panel-bg,#222);color:var(--text-color,#fff);width:80%;max-width:700px;max-height:80vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,0.6);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:16px;border-bottom:1px solid var(--border-color,#444);display:flex;justify-content:space-between;align-items:center;">
+          <h2 style="margin:0;font-size:18px;">Browsing History</h2>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="history-toggle-btn" style="padding:6px 12px;background:#47a3ff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Disable</button>
+            <button id="history-clear-btn" style="padding:6px 12px;background:#ff4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Clear All</button>
+            <button id="history-close-btn" style="padding:6px 12px;background:#666;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;">✕</button>
+          </div>
+        </div>
+        <div id="history-list" style="flex:1;overflow-y:auto;padding:8px;"></div>
+      </div>
+    `;
+
+    document.body.appendChild(panel);
+    return panel;
+  }
+
+  function formatTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return Math.floor(diff / 60000) + ' min ago';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + ' hours ago';
+    if (diff < 604800000) return Math.floor(diff / 86400000) + ' days ago';
+    return date.toLocaleDateString();
+  }
+
+  function renderHistoryList() {
+    const panel = document.getElementById('history-panel');
+    if (!panel) return;
+    const list = panel.querySelector('#history-list');
+    
+    if (historyData.length === 0) {
+      list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted,#999);">No browsing history</div>';
+      return;
+    }
+
+    list.innerHTML = historyData.map(item => `
+      <div class="history-item" data-url="${item.url.replace(/"/g, '&quot;')}" style="padding:10px 12px;cursor:pointer;border-radius:6px;margin:2px 0;display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);">
+        <div style="flex:1;overflow:hidden;">
+          <div class="history-title" style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-color,#fff);">${item.title.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+          <div class="history-url" style="font-size:11px;color:var(--muted,#888);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.url}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="history-time" style="font-size:11px;color:var(--muted,#666);">${formatTime(item.time)}</span>
+          <button class="history-remove" data-url="${item.url.replace(/"/g, '&quot;')}" style="background:none;border:none;color:var(--muted,#666);cursor:pointer;font-size:16px;padding:4px;">✕</button>
+        </div>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.history-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.classList.contains('history-remove')) return;
+        const url = el.dataset.url;
+        if (window.electronAPI && window.electronAPI.onCreateNewTab) {
+          window.electronAPI.onCreateNewTab(null, url);
+        }
+        hideHistoryPanel();
+      });
+    });
+
+    list.querySelectorAll('.history-remove').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const url = el.dataset.url;
+        if (window.electronAPI && window.electronAPI.removeHistoryItem) {
+          await window.electronAPI.removeHistoryItem(url);
+        }
+        historyData = historyData.filter(h => h.url !== url);
+        saveToLocalStorage('browsingHistory', historyData);
+        renderHistoryList();
+      });
+    });
+  }
+
+  async function showHistoryPanel() {
+    const panel = buildHistoryPanel();
+    const toggleBtn = panel.querySelector('#history-toggle-btn');
+    const clearBtn = panel.querySelector('#history-clear-btn');
+    const closeBtn = panel.querySelector('#history-close-btn');
+
+    toggleBtn.onclick = async () => {
+      if (window.electronAPI && window.electronAPI.toggleHistory) {
+        const enabled = await window.electronAPI.toggleHistory();
+        toggleBtn.textContent = enabled ? 'Disable' : 'Enable';
+        toggleBtn.style.background = enabled ? '#47a3ff' : '#666';
+        setHistoryEnabled(enabled);
+      }
+    };
+
+    clearBtn.onclick = async () => {
+      if (window.electronAPI && window.electronAPI.clearHistory) {
+        await window.electronAPI.clearHistory();
+      }
+      historyData = [];
+      saveToLocalStorage('browsingHistory', historyData);
+      renderHistoryList();
+    };
+
+    closeBtn.onclick = hideHistoryPanel;
+
+    const localHistory = loadFromLocalStorage('browsingHistory');
+    if (window.electronAPI && window.electronAPI.getHistory) {
+      const electronHistory = await window.electronAPI.getHistory();
+      const merged = [...electronHistory];
+      for (const item of localHistory) {
+        if (!merged.find(h => h.url === item.url)) {
+          merged.push(item);
+        }
+      }
+      historyData = merged.slice(0, 500);
+      saveToLocalStorage('browsingHistory', historyData);
+    } else {
+      historyData = localHistory;
+    }
+    if (window.electronAPI && window.electronAPI.isHistoryEnabled) {
+      const enabled = await window.electronAPI.isHistoryEnabled();
+      toggleBtn.textContent = enabled ? 'Disable' : 'Enable';
+      toggleBtn.style.background = enabled ? '#47a3ff' : '#666';
+      setHistoryEnabled(enabled);
+    } else {
+      const localEnabled = getHistoryEnabled();
+      toggleBtn.textContent = localEnabled ? 'Disable' : 'Enable';
+      toggleBtn.style.background = localEnabled ? '#47a3ff' : '#666';
+    }
+
+    renderHistoryList();
+    panel.style.display = 'flex';
+  }
+
+  function hideHistoryPanel() {
+    const panel = document.getElementById('history-panel');
+    if (panel) panel.style.display = 'none';
+  }
+
+  if (window.electronAPI && window.electronAPI.onToggleHistory) {
+    window.electronAPI.onToggleHistory(() => {
+      const panel = document.getElementById('history-panel');
+      if (panel && panel.style.display !== 'none') {
+        hideHistoryPanel();
+      } else {
+        showHistoryPanel();
+      }
+    });
+  }
+
+  if (window.electronAPI && window.electronAPI.onHistoryUpdated) {
+    window.electronAPI.onHistoryUpdated((event, data) => {
+      console.log('History updated from electron:', data ? data.length : 0);
+      historyData = data;
+      saveToLocalStorage('browsingHistory', data);
+      console.log('Saved to localStorage for account:', currentAccountName);
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      hideHistoryPanel();
+    }
+    if (e.ctrlKey && e.key === 'p') {
+      e.preventDefault();
+      const panel = document.getElementById('history-panel');
+      if (panel && panel.style.display === 'flex') {
+        hideHistoryPanel();
+      } else {
+        showHistoryPanel();
+      }
+    }
+  });
+  
+  window.addEventListener('beforeunload', () => {
+    saveToLocalStorage('browsingHistory', historyData);
+  });
 });
