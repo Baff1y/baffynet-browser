@@ -54,5 +54,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Ctrl+X split view handlers
   onOpenSplitView: (callback) => ipcRenderer.on('open-split-view', callback),
-  onExitSplitView: (callback) => ipcRenderer.on('exit-split-view', callback)
+  onExitSplitView: (callback) => ipcRenderer.on('exit-split-view', callback),
+
+  // History functions
+  onToggleHistory: (callback) => ipcRenderer.on('toggle-history', callback),
+  onHistoryUpdated: (callback) => ipcRenderer.on('history-updated', callback),
+  getHistory: () => ipcRenderer.invoke('get-history'),
+  toggleHistory: () => ipcRenderer.invoke('toggle-history'),
+  isHistoryEnabled: () => ipcRenderer.invoke('is-history-enabled'),
+  clearHistory: () => ipcRenderer.invoke('clear-history'),
+  removeHistoryItem: (url) => ipcRenderer.invoke('remove-history-item', url),
+
+  // Keybinds functions
+  getKeybinds: () => ipcRenderer.invoke('get-keybinds'),
+  setKeybinds: (keybinds) => ipcRenderer.invoke('set-keybinds', keybinds),
+  onKeybindsUpdated: (callback) => ipcRenderer.on('keybinds-updated', callback),
+  onRenameKeybinds: (callback) => ipcRenderer.on('rename-keybinds', callback),
+  onCustomHotkeys: (callback) => ipcRenderer.on('custom-hotkeys', callback)
 })
