@@ -70,5 +70,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setKeybinds: (keybinds) => ipcRenderer.invoke('set-keybinds', keybinds),
   onKeybindsUpdated: (callback) => ipcRenderer.on('keybinds-updated', callback),
   onRenameKeybinds: (callback) => ipcRenderer.on('rename-keybinds', callback),
-  onCustomHotkeys: (callback) => ipcRenderer.on('custom-hotkeys', callback)
+  onCustomHotkeys: (callback) => ipcRenderer.on('custom-hotkeys', callback),
+  
+  // Text to speech handler
+  onTextToSpeech: (callback) => ipcRenderer.on('text-to-speech', callback)
 })
