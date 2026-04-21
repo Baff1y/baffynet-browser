@@ -53,7 +53,7 @@ const { ipcRenderer } = require('electron')
       p.then(r => { resolved = true; value = (typeof r === 'string' ? r : null) });
       const start = Date.now();
       while (!resolved && (Date.now() - start) < 50) { /* spin for up to 50ms */ }
-      return value;
+      return value;Ц
     } catch (e) { return null }
   }
 })()
