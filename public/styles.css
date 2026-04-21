@@ -1,683 +1,477 @@
-@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500&display=swap');
+// Renderer helpers: show a custom modal for permission requests (supports keyboard shortcuts)
+window.addEventListener('DOMContentLoaded', () => {
+  const buildModal = () => {
+    let modal = document.getElementById('permission-modal');
+    if (modal) return modal;
 
-:root {
-  --bg-color: #25242b;
-  --text-color: #f0f0f0;
-  --panel-bg: #353440;
-  --tab-bg: #353440;
-  --tab-active-bg: #4a475f;
-  --url-bar-bg: #353440;
-  --button-bg: #353440;
-  --button-hover: #4a475f;
-  --border-color: #3a3944;
-}
+    modal = document.createElement('div');
+    modal.id = 'permission-modal';
+    modal.style = `position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);z-index:99999;`;
+    modal.innerHTML = `
+      <div id="permission-box" style="background:var(--panel-bg, #222);color:var(--text-color,#fff);padding:20px;border-radius:8px;min-width:320px;max-width:560px;box-shadow:0 4px 24px rgba(0,0,0,0.5);">
+        <h3 id="permission-title" style="margin:0 0 10px 0;font-size:16px;">Permission request</h3>
+        <p id="permission-message" style="margin:0 0 12px 0;font-size:13px;color:var(--muted,#ccc);"></p>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button id="permission-deny" style="padding:6px 12px;background:#ff4444;color:#fff;border:none;border-radius:4px;cursor:pointer;">Deny (Del)</button>
+          <button id="permission-allow" style="padding:6px 12px;background:#47a3ff;color:#fff;border:none;border-radius:4px;cursor:pointer;">Allow</button>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--muted,#ccc);">Tip: Press <strong>Ctrl+V</strong> or <strong>Ctrl+N</strong> anytime to re-check saved permissions for the active site. While modal is open, press <strong>Delete</strong> or <strong>Escape</strong> to deny.</div>
+      </div>
+    `;
 
-/* Светлая тема */
-.light-theme {
-  --bg-color: #f0f0f0;
-  --text-color: #333333;
-  --panel-bg: #ffffff;
-  --tab-bg: #e0e0e0;
-  --tab-active-bg: #d0d0d0;
-  --url-bar-bg: #ffffff;
-  --button-bg: #e8e8e8;
-  --button-hover: #d8d8d8;
-  --border-color: #cccccc;
-}
+    document.body.appendChild(modal);
+    return modal;
+  };
 
-/* Темная тема (по умолчанию) */
-.dark-theme {
-  --bg-color: #25242b;
-  --text-color: #f0f0f0;
-  --panel-bg: #353440;
-  --tab-bg: #353440;
-  --tab-active-bg: #4a475f;
-  --url-bar-bg: #353440;
-  --button-bg: #353440;
-  --button-hover: #4a475f;
-  --border-color: #3a3944;
-}
+  let activeRequest = null;
+  let keyHandler = (e) => {
+    if (!activeRequest) return;
+    // Delete to deny
+    if (e.key === 'Delete' || e.key === 'Del') {
+      e.preventDefault();
+      respond(false);
+    }
+    // Escape to deny
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      respond(false);
+    }
+  };
 
-html, body, #app {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  font-size: 14px;
-  font-family: "Rubik", sans-serif;
-  color: var(--text-color);
-  background-color: var(--bg-color);
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
+  function showModal(request) {
+    activeRequest = request;
+    const modal = buildModal();
+    const title = modal.querySelector('#permission-title');
+    const msg = modal.querySelector('#permission-message');
+    const allowBtn = modal.querySelector('#permission-allow');
+    const denyBtn = modal.querySelector('#permission-deny');
 
-#app {
-  display: flex;
-  flex-direction: column;
-}
+    title.textContent = 'Permission request';
 
-#control-panel {
-  flex-shrink: 0;
-  background: var(--panel-bg);
-  z-index: 100;
-  transition: background-color 0.3s ease;
-}
+    msg.textContent = `${request.origin} wants to access your ${request.permText}.`;
 
-#tab-bar {
-  display: flex;
-  padding: 8px 0 0 8px;
-  overflow-x: auto;
-  height: 38px;
-  align-items: flex-end;
-  gap: 5px;
-}
+    const onAllow = () => respond(true);
+    const onDeny = () => respond(false);
 
-#new-tab {
-  padding: 6px 12px;
-  background: var(--button-bg);
-  color: var(--text-color);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  height: 32px;
-  transition: background-color 0.3s ease;
-}
+    allowBtn.onclick = onAllow;
+    denyBtn.onclick = onDeny;
 
-#new-tab:hover {
-  background: var(--button-hover);
-}
+    // show
+    modal.style.display = 'flex';
 
-.tab {
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: 8px 25px 8px 8px;
-  margin-right: 2px;
-  background: var(--tab-bg);
-  color: var(--text-color);
-  border-radius: 4px 4px 0 0;
-  max-width: 200px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  user-select: none;
-}
-
-.tab.active {
-  background: var(--tab-active-bg);
-  border-bottom: 2px solid #47a3ff;
-}
-
-.tab[draggable="true"] {
-  cursor: move;
-  opacity: 0.7;
-}
-
-.tab[draggable="true"]:hover {
-  background: var(--button-hover);
-}
-
-.tab-favicon {
-  width: 16px;
-  height: 16px;
-  margin-right: 6px;
-  flex-shrink: 0;
-}
-
-.tab-title {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-grow: 1;
-}
-
-.tab-close {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #a0a0a0;
-  cursor: pointer;
-}
-
-.tab-close:hover {
-  color: #ff5555;
-}
-
-#toolbar {
-  padding: 8px;
-  display: flex;
-  gap: 5px;
-  border-top: 1px solid var(--border-color);
-  align-items: center;
-  transition: border-color 0.3s ease;
-}
-
-#url-bar {
-  flex-grow: 1;
-  padding: 8px;
-  background: var(--url-bar-bg);
-  border: 1px solid var(--border-color);
-  color: var(--text-color);
-  border-radius: 4px;
-  transition: all 0.3s ease;
-}
-
-/* Visual hint when dragging a file over URL bar */
-#url-bar.drag-over {
-  outline: 2px dashed #47a3ff;
-  box-shadow: 0 0 0 4px rgba(71,163,255,0.06);
-}
-
-/* Toast for short messages */
-#baffy-toast {
-  transition: opacity 0.25s ease;
-  opacity: 0;
-}
-
-button {
-  padding: 6px 12px;
-  background: var(--button-bg);
-  color: var(--text-color);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-button:hover {
-  background: var(--button-hover);
-}
-
-/* Стили для правых кнопок */
-#right-buttons {
-  display: flex;
-  gap: 5px;
-  margin-left: auto;
-}
-
-#extensions-btn, #downloads-btn {
-  padding: 6px 12px;
-  background: var(--button-bg);
-  color: var(--text-color);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: background-color 0.3s ease;
-}
-
-#extensions-btn:hover, #downloads-btn:hover {
-  background: var(--button-hover);
-}
-
-#webviews-container {
-  flex: 1;
-  position: relative;
-  min-height: 0;
-}
-
-webview {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: white;
-  border: none;
-  display: flex;
-}
-
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
-}
-
-.modal.hidden {
-  display: none;
-}
-
-.modal-content {
-  background: var(--panel-bg);
-  padding: 20px;
-  border-radius: 8px;
-  width: 400px;
-  color: var(--text-color);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-.modal-content input {
-  padding: 8px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  background: var(--url-bar-bg);
-  color: var(--text-color);
-  transition: all 0.3s ease;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-/* Стили для менеджера загрузок */
-.download-item {
-  border-bottom: 1px solid var(--border-color);
-  transition: background-color 0.3s ease;
-}
-
-.download-active {
-  background: rgba(71, 163, 255, 0.1);
-}
-
-.download-complete {
-  background: rgba(76, 175, 80, 0.1);
-}
-
-.download-error {
-  background: rgba(255, 68, 68, 0.1);
-}
-
-.download-progress-bar {
-  transition: width 0.3s ease, background-color 0.3s ease;
-}
-
-/* Стили для меню расширений */
-.extensions-menu {
-  position: absolute;
-  top: 40px;
-  right: 10px;
-  background: var(--panel-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 10px;
-  min-width: 250px;
-  max-height: 400px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  transition: all 0.3s ease;
-}
-
-.extension-item {
-  padding: 8px;
-  margin: 5px 0;
-  background: var(--tab-bg);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.extension-item:hover {
-  background: var(--button-hover);
-}
-
-/* Стили для кастомных алертов */
-.custom-alert-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 99999;
-  animation: fadeIn 0.2s ease;
-}
-
-.custom-alert-content {
-  background: var(--panel-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  width: 400px;
-  max-width: 90vw;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  animation: slideUp 0.3s ease;
-}
-
-.custom-alert-header {
-  padding: 16px 20px;
-  background: var(--tab-active-bg);
-  border-bottom: 1px solid var(--border-color);
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--text-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.custom-alert-body {
-  padding: 20px;
-  color: var(--text-color);
-  line-height: 1.5;
-}
-
-.custom-alert-input {
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-  background: var(--url-bar-bg);
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  font-family: inherit;
-  font-size: 14px;
-}
-
-.custom-alert-actions {
-  padding: 16px 20px;
-  background: var(--tab-bg);
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.custom-alert-btn {
-  padding: 8px 16px;
-  min-width: 80px;
-  border: none;
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-}
-
-.custom-alert-btn-primary {
-  background: #47a3ff;
-  color: white;
-}
-
-.custom-alert-btn-primary:hover {
-  background: #2d8de0;
-}
-
-.custom-alert-btn-secondary {
-  background: var(--button-bg);
-  color: var(--text-color);
-}
-
-.custom-alert-btn-secondary:hover {
-  background: var(--button-hover);
-}
-
-/* Анимации для кастомных алертов */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+    // focus for keyboard events
+    document.addEventListener('keydown', keyHandler);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  function hideModal() {
+    const modal = document.getElementById('permission-modal');
+    if (modal) modal.style.display = 'none';
+    document.removeEventListener('keydown', keyHandler);
+    activeRequest = null;
   }
-}
-/* ... остальные стили без изменений ... */
 
-/* Стили для кастомных алертов БРАУЗЕРА (не сайтов) */
-.custom-alert-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 99999;
-  animation: fadeIn 0.2s ease;
-}
+  function respond(allow) {
+    try {
+      if (!activeRequest) return;
+      const { requestId, permission, origin } = activeRequest;
 
-.custom-alert-content {
-  background: var(--panel-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  width: 400px;
-  max-width: 90vw;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  animation: slideUp 0.3s ease;
-}
+      // persist a simple flag in localStorage for UI visibility
+      try {
+        if (window && window.localStorage && origin && permission) {
+          localStorage.setItem(`perm:${origin}:${permission}`, allow ? 'allow' : 'deny');
+        }
+      } catch (e) { /* ignore localStorage errors */ }
 
-.custom-alert-header {
-  padding: 16px 20px;
-  background: var(--tab-active-bg);
-  border-bottom: 1px solid var(--border-color);
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--text-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.custom-alert-body {
-  padding: 20px;
-  color: var(--text-color);
-  line-height: 1.5;
-}
-
-.custom-alert-input {
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-  background: var(--url-bar-bg);
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  font-family: inherit;
-  font-size: 14px;
-}
-
-.custom-alert-actions {
-  padding: 16px 20px;
-  background: var(--tab-bg);
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.custom-alert-btn {
-  padding: 8px 16px;
-  min-width: 80px;
-  border: none;
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-}
-
-.custom-alert-btn-primary {
-  background: #47a3ff;
-  color: white;
-}
-
-.custom-alert-btn-primary:hover {
-  background: #2d8de0;
-}
-
-.custom-alert-btn-secondary {
-  background: var(--button-bg);
-  color: var(--text-color);
-}
-
-.custom-alert-btn-secondary:hover {
-  background: var(--button-hover);
-}
-
-/* Анимации для кастомных алертов */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+      if (window.electronAPI && window.electronAPI.sendPermissionResponse) {
+        window.electronAPI.sendPermissionResponse(requestId, allow);
+      }
+    } catch (err) {
+      console.error('permission response error', err);
+    } finally {
+      hideModal();
+    }
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  if (window.electronAPI && window.electronAPI.onPermissionRequest) {
+    window.electronAPI.onPermissionRequest((event, data) => {
+      try {
+        const { requestId, permission, origin, mediaTypes = [] } = data || {};
+        let permText = permission;
+
+        if (permission === 'media') {
+          const parts = [];
+          if (mediaTypes.includes('video')) parts.push('camera');
+          if (mediaTypes.includes('audio')) parts.push('microphone');
+          permText = parts.length ? parts.join(' and ') : 'camera / microphone';
+        } else if (permission === 'geolocation') {
+          permText = 'location';
+        }
+
+        showModal({ requestId, permission, origin, permText });
+      } catch (err) {
+        console.error('permission prompt error', err);
+      }
+    });
   }
-}/* ... существующие стили ... */
 
-/* Стили для модальных окон разрешений */
-.permission-modal .modal-content {
-  background: var(--panel-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 25px;
-  width: 450px;
-  color: var(--text-color);
-  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-}
+  // Generic dialog UI: alert / confirm / prompt
+  function buildDialogModal() {
+    let modal = document.getElementById('native-dialog-modal');
+    if (modal) return modal;
 
-.permission-modal h2 {
-  margin: 0 0 15px 0;
-  font-size: 22px;
-  color: var(--text-color);
-}
+    modal = document.createElement('div');
+    modal.id = 'native-dialog-modal';
+    modal.style = 'position:fixed;top:0;left:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:100000;';
+    modal.innerHTML = `
+      <div id="native-dialog-box" style="background:var(--panel-bg,#222);color:var(--text-color,#fff);padding:18px;border-radius:8px;min-width:320px;max-width:560px;box-shadow:0 6px 36px rgba(0,0,0,0.5);">
+        <div id="native-dialog-message" style="font-size:14px;margin-bottom:12px;color:var(--muted,#ccc);"></div>
+        <div id="native-dialog-input" style="margin-bottom:12px;display:none;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button id="native-dialog-cancel" style="padding:6px 12px;background:#777;color:#fff;border:none;border-radius:4px;cursor:pointer;display:none;">Cancel</button>
+          <button id="native-dialog-ok" style="padding:6px 12px;background:#47a3ff;color:#fff;border:none;border-radius:4px;cursor:pointer;">OK</button>
+        </div>
+      </div>
+    `;
 
-.permission-modal .permission-icon {
-  font-size: 60px;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.permission-modal .site-info {
-  background: var(--tab-bg);
-  padding: 15px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  border-left: 4px solid #47a3ff;
-}
-
-.permission-modal .site-url {
-  font-weight: bold;
-  color: var(--text-color);
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-}
-
-.permission-modal .site-url::before {
-  content: "🌐";
-  margin-right: 8px;
-}
-
-.permission-modal .permission-desc {
-  color: var(--text-color);
-  line-height: 1.5;
-}
-
-.permission-modal .security-note {
-  color: #888;
-  font-size: 12px;
-  text-align: center;
-  margin: 15px 0;
-  padding: 10px;
-  background: rgba(0,0,0,0.1);
-  border-radius: 6px;
-}
-
-.permission-modal .action-buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.permission-modal .btn-deny {
-  flex: 1;
-  padding: 14px;
-  background: var(--button-bg);
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 15px;
-  transition: all 0.2s ease;
-}
-
-.permission-modal .btn-deny:hover {
-  background: var(--button-hover);
-  transform: translateY(-1px);
-}
-
-.permission-modal .btn-allow {
-  flex: 1;
-  padding: 14px;
-  background: #47a3ff;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 15px;
-  transition: all 0.2s ease;
-}
-
-.permission-modal .btn-allow:hover {
-  background: #2d8de0;
-  transform: translateY(-1px);
-}
-
-.permission-modal .remember-choice {
-  margin-top: 15px;
-  text-align: center;
-}
-
-.permission-modal .remember-choice label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-color);
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.permission-modal .remember-choice input {
-  margin-right: 8px;
-}
-
-/* Анимация для появления модального окна разрешений */
-@keyframes permissionSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-30px) scale(0.95);
+    document.body.appendChild(modal);
+    return modal;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
 
-.permission-modal .modal-content {
-  animation: permissionSlideIn 0.3s ease-out;
-}
+  function showAlert(message) {
+    return new Promise((resolve) => {
+      const modal = buildDialogModal();
+      modal.querySelector('#native-dialog-message').textContent = message;
+      const inputWrap = modal.querySelector('#native-dialog-input');
+      inputWrap.style.display = 'none';
+      const cancelBtn = modal.querySelector('#native-dialog-cancel');
+      const okBtn = modal.querySelector('#native-dialog-ok');
+
+      cancelBtn.style.display = 'none';
+      okBtn.onclick = () => { hideDialog(); resolve(); };
+
+      function hideDialog() { modal.style.display = 'none'; document.removeEventListener('keydown', keyHandler); }
+      function keyHandler(e) { if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); hideDialog(); resolve(); } }
+
+      modal.style.display = 'flex';
+      document.addEventListener('keydown', keyHandler);
+    });
+  }
+
+  function showConfirm(message) {
+    return new Promise((resolve) => {
+      const modal = buildDialogModal();
+      modal.querySelector('#native-dialog-message').textContent = message;
+      const inputWrap = modal.querySelector('#native-dialog-input');
+      inputWrap.style.display = 'none';
+      const cancelBtn = modal.querySelector('#native-dialog-cancel');
+      const okBtn = modal.querySelector('#native-dialog-ok');
+
+      cancelBtn.style.display = '';
+      cancelBtn.onclick = () => { hideDialog(); resolve(false); };
+      okBtn.onclick = () => { hideDialog(); resolve(true); };
+
+      function hideDialog() { modal.style.display = 'none'; document.removeEventListener('keydown', keyHandler); }
+      function keyHandler(e) { if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); hideDialog(); resolve(false); } }
+
+      modal.style.display = 'flex';
+      document.addEventListener('keydown', keyHandler);
+    });
+  }
+
+  function showPrompt(message, defaultValue = '') {
+    return new Promise((resolve) => {
+      const modal = buildDialogModal();
+      modal.querySelector('#native-dialog-message').textContent = message;
+      const inputWrap = modal.querySelector('#native-dialog-input');
+      inputWrap.innerHTML = `<input id="native-dialog-input-el" style="width:100%;padding:8px;border-radius:4px;border:1px solid #333;background:transparent;color:var(--text-color,#fff);" value="${String(defaultValue).replace(/"/g, '&quot;')}" />`;
+      inputWrap.style.display = '';
+      const inputEl = inputWrap.querySelector('#native-dialog-input-el');
+      const cancelBtn = modal.querySelector('#native-dialog-cancel');
+      const okBtn = modal.querySelector('#native-dialog-ok');
+
+      cancelBtn.style.display = '';
+      cancelBtn.onclick = () => { hideDialog(); resolve(null); };
+      okBtn.onclick = () => { hideDialog(); resolve(inputEl.value); };
+
+      function hideDialog() { modal.style.display = 'none'; document.removeEventListener('keydown', keyHandler); }
+      function keyHandler(e) {
+        if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); hideDialog(); resolve(null); }
+        if (e.key === 'Enter') { e.preventDefault(); hideDialog(); resolve(inputEl.value); }
+      }
+
+      modal.style.display = 'flex';
+      inputEl.focus();
+      inputEl.select();
+      document.addEventListener('keydown', keyHandler);
+    });
+  }
+
+// expose globally for host page to call from main.js
+  window.showAlert = showAlert;
+  window.showConfirm = showConfirm;
+  window.showPrompt = showPrompt;
+  
+  // Alias for compatibility
+  window.browserAlert = (msg, title) => showAlert(msg);
+  window.browserConfirm = (msg, title) => showConfirm(msg);
+  window.browserPrompt = (msg, def) => showPrompt(msg, def);
+
+  // History globals
+  let historyData = [];
+  let localStorageWorks = true;
+  const HISTORY_ENABLED_KEY = 'historyEnabled';
+  const STORAGE_KEY = 'browsingHistory';
+
+  function checkLocalStorage() {
+    try {
+      localStorage.setItem('test', '1');
+      localStorage.removeItem('test');
+      localStorageWorks = true;
+    } catch {
+      localStorageWorks = false;
+    }
+  }
+  checkLocalStorage();
+
+  function loadFromLocalStorage() {
+    if (!localStorageWorks) return [];
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) { return []; }
+  }
+
+  function saveToLocalStorage(data) {
+    if (!localStorageWorks) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) { console.log('save error:', e); }
+  }
+
+  function getHistoryEnabled() {
+    const stored = localStorage.getItem(HISTORY_ENABLED_KEY);
+    return stored === null ? true : stored === 'true';
+  }
+
+  function setHistoryEnabled(enabled) {
+    localStorage.setItem(HISTORY_ENABLED_KEY, enabled.toString());
+  }
+
+  historyData = loadFromLocalStorage();
+  console.log('Initial historyData:', historyData.length);
+  saveToLocalStorage(historyData);
+
+  (async function syncWithElectron() {
+    if (window.electronAPI && window.electronAPI.getHistory) {
+      const electronHistory = await window.electronAPI.getHistory();
+      if (electronHistory && electronHistory.length > 0) {
+        const merged = [...historyData];
+        for (const item of electronHistory) {
+          if (!merged.find(h => h.url === item.url)) {
+            merged.push(item);
+          }
+        }
+        historyData = merged.slice(0, 500);
+        saveToLocalStorage(historyData);
+        console.log('Synced with electron, total:', historyData.length);
+      }
+    }
+  })();
+
+  setInterval(() => {
+    if (historyData.length > 0) {
+      saveToLocalStorage(historyData);
+    }
+  }, 2000);
+
+  function buildHistoryPanel() {
+    let panel = document.getElementById('history-panel');
+    if (panel) return panel;
+
+    panel = document.createElement('div');
+    panel.id = 'history-panel';
+    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:100001;';
+    panel.innerHTML = `
+      <div id="history-box" style="background:var(--panel-bg,#222);color:var(--text-color,#fff);width:80%;max-width:700px;max-height:80vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,0.6);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:16px;border-bottom:1px solid var(--border-color,#444);display:flex;justify-content:space-between;align-items:center;">
+          <h2 style="margin:0;font-size:18px;">Browsing History</h2>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="history-toggle-btn" style="padding:6px 12px;background:#47a3ff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Disable</button>
+            <button id="history-clear-btn" style="padding:6px 12px;background:#ff4444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Clear All</button>
+            <button id="history-close-btn" style="padding:6px 12px;background:#666;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;">✕</button>
+          </div>
+        </div>
+        <div id="history-list" style="flex:1;overflow-y:auto;padding:8px;"></div>
+      </div>
+    `;
+
+    document.body.appendChild(panel);
+    return panel;
+  }
+
+  function formatTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return Math.floor(diff / 60000) + ' min ago';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + ' hours ago';
+    if (diff < 604800000) return Math.floor(diff / 86400000) + ' days ago';
+    return date.toLocaleDateString();
+  }
+
+  function renderHistoryList() {
+    const panel = document.getElementById('history-panel');
+    if (!panel) return;
+    const list = panel.querySelector('#history-list');
+    
+    if (historyData.length === 0) {
+      list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted,#999);">No browsing history</div>';
+      return;
+    }
+
+    list.innerHTML = historyData.map(item => `
+      <div class="history-item" data-url="${item.url.replace(/"/g, '&quot;')}" style="padding:10px 12px;cursor:pointer;border-radius:6px;margin:2px 0;display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);">
+        <div style="flex:1;overflow:hidden;">
+          <div class="history-title" style="font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-color,#fff);">${item.title.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+          <div class="history-url" style="font-size:11px;color:var(--muted,#888);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.url}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="history-time" style="font-size:11px;color:var(--muted,#666);">${formatTime(item.time)}</span>
+          <button class="history-remove" data-url="${item.url.replace(/"/g, '&quot;')}" style="background:none;border:none;color:var(--muted,#666);cursor:pointer;font-size:16px;padding:4px;">✕</button>
+        </div>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.history-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.classList.contains('history-remove')) return;
+        const url = el.dataset.url;
+        if (window.electronAPI && window.electronAPI.onCreateNewTab) {
+          window.electronAPI.onCreateNewTab(null, url);
+        }
+        hideHistoryPanel();
+      });
+    });
+
+    list.querySelectorAll('.history-remove').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const url = el.dataset.url;
+        if (window.electronAPI && window.electronAPI.removeHistoryItem) {
+          await window.electronAPI.removeHistoryItem(url);
+        }
+  historyData = historyData.filter(h => h.url !== url);
+        saveToLocalStorage(historyData);
+        renderHistoryList();
+      });
+    });
+  }
+
+  async function showHistoryPanel() {
+    const panel = buildHistoryPanel();
+    const toggleBtn = panel.querySelector('#history-toggle-btn');
+    const clearBtn = panel.querySelector('#history-clear-btn');
+    const closeBtn = panel.querySelector('#history-close-btn');
+
+    toggleBtn.onclick = async () => {
+      if (window.electronAPI && window.electronAPI.toggleHistory) {
+        const enabled = await window.electronAPI.toggleHistory();
+        toggleBtn.textContent = enabled ? 'Disable' : 'Enable';
+        toggleBtn.style.background = enabled ? '#47a3ff' : '#666';
+        setHistoryEnabled(enabled);
+      }
+    };
+
+    clearBtn.onclick = async () => {
+      if (window.electronAPI && window.electronAPI.clearHistory) {
+        await window.electronAPI.clearHistory();
+      }
+      historyData = [];
+      saveToLocalStorage(historyData);
+      renderHistoryList();
+    };
+
+    closeBtn.onclick = hideHistoryPanel;
+
+    const localHistory = loadFromLocalStorage('browsingHistory');
+    if (window.electronAPI && window.electronAPI.getHistory) {
+      const electronHistory = await window.electronAPI.getHistory();
+      const merged = [...electronHistory];
+      for (const item of localHistory) {
+        if (!merged.find(h => h.url === item.url)) {
+          merged.push(item);
+        }
+      }
+      historyData = merged.slice(0, 500);
+      saveToLocalStorage(historyData);
+    } else {
+      historyData = localHistory;
+    }
+    if (window.electronAPI && window.electronAPI.isHistoryEnabled) {
+      const enabled = await window.electronAPI.isHistoryEnabled();
+      toggleBtn.textContent = enabled ? 'Disable' : 'Enable';
+      toggleBtn.style.background = enabled ? '#47a3ff' : '#666';
+      setHistoryEnabled(enabled);
+    } else {
+      const localEnabled = getHistoryEnabled();
+      toggleBtn.textContent = localEnabled ? 'Disable' : 'Enable';
+      toggleBtn.style.background = localEnabled ? '#47a3ff' : '#666';
+    }
+
+    renderHistoryList();
+    panel.style.display = 'flex';
+  }
+
+  function hideHistoryPanel() {
+    const panel = document.getElementById('history-panel');
+    if (panel) panel.style.display = 'none';
+  }
+
+  if (window.electronAPI && window.electronAPI.onToggleHistory) {
+    window.electronAPI.onToggleHistory(() => {
+      const panel = document.getElementById('history-panel');
+      if (panel && panel.style.display !== 'none') {
+        hideHistoryPanel();
+      } else {
+        showHistoryPanel();
+      }
+    });
+  }
+
+  if (window.electronAPI && window.electronAPI.onHistoryUpdated) {
+    window.electronAPI.onHistoryUpdated((event, data) => {
+      console.log('History updated from electron:', data ? data.length : 0);
+      historyData = data;
+      saveToLocalStorage(data);
+      const panel = document.getElementById('history-panel');
+      if (panel && panel.style.display === 'flex') {
+        renderHistoryList();
+      }
+      console.log('Saved to localStorage');
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      hideHistoryPanel();
+    }
+    if (e.ctrlKey && e.key === 'q') {
+      e.preventDefault();
+      const panel = document.getElementById('history-panel');
+      if (panel && panel.style.display === 'flex') {
+        hideHistoryPanel();
+      } else {
+        showHistoryPanel();
+      }
+    }
+    if (e.ctrlKey && e.key === 'p') {
+      e.preventDefault();
+      speakSelectedText();
+    }
+  });
+  
+  window.addEventListener('beforeunload', () => {
+    saveToLocalStorage('browsingHistory', historyData);
+  });
+});
