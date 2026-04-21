@@ -206,7 +206,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // expose globally for host page to call from main.js
+// expose globally for host page to call from main.js
   window.showAlert = showAlert;
   window.showConfirm = showConfirm;
   window.showPrompt = showPrompt;
@@ -216,9 +216,22 @@ window.addEventListener('DOMContentLoaded', () => {
   window.browserConfirm = (msg, title) => showConfirm(msg);
   window.browserPrompt = (msg, def) => showPrompt(msg, def);
 
-  // History panel
+  // History globals
+  let historyData = [];
+  let localStorageWorks = true;
   const HISTORY_ENABLED_KEY = 'historyEnabled';
   const STORAGE_KEY = 'browsingHistory';
+
+  function checkLocalStorage() {
+    try {
+      localStorage.setItem('test', '1');
+      localStorage.removeItem('test');
+      localStorageWorks = true;
+    } catch {
+      localStorageWorks = false;
+    }
+  }
+  checkLocalStorage();
 
   function loadFromLocalStorage() {
     if (!localStorageWorks) return [];
@@ -244,7 +257,6 @@ window.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem(HISTORY_ENABLED_KEY, enabled.toString());
   }
 
-  checkLocalStorage();
   historyData = loadFromLocalStorage();
   console.log('Initial historyData:', historyData.length);
   saveToLocalStorage(historyData);
@@ -264,7 +276,6 @@ window.addEventListener('DOMContentLoaded', () => {
         console.log('Synced with electron, total:', historyData.length);
       }
     }
-    saveToLocalStorage(historyData);
   })();
 
   setInterval(() => {
@@ -350,8 +361,8 @@ window.addEventListener('DOMContentLoaded', () => {
         if (window.electronAPI && window.electronAPI.removeHistoryItem) {
           await window.electronAPI.removeHistoryItem(url);
         }
-        historyData = historyData.filter(h => h.url !== url);
-        saveToLocalStorage('browsingHistory', historyData);
+  historyData = historyData.filter(h => h.url !== url);
+        saveToLocalStorage(historyData);
         renderHistoryList();
       });
     });
@@ -377,7 +388,7 @@ window.addEventListener('DOMContentLoaded', () => {
         await window.electronAPI.clearHistory();
       }
       historyData = [];
-      saveToLocalStorage('browsingHistory', historyData);
+      saveToLocalStorage(historyData);
       renderHistoryList();
     };
 
@@ -393,7 +404,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
       }
       historyData = merged.slice(0, 500);
-      saveToLocalStorage('browsingHistory', historyData);
+      saveToLocalStorage(historyData);
     } else {
       historyData = localHistory;
     }
@@ -432,8 +443,12 @@ window.addEventListener('DOMContentLoaded', () => {
     window.electronAPI.onHistoryUpdated((event, data) => {
       console.log('History updated from electron:', data ? data.length : 0);
       historyData = data;
-      saveToLocalStorage('browsingHistory', data);
-      console.log('Saved to localStorage for account:', currentAccountName);
+      saveToLocalStorage(data);
+      const panel = document.getElementById('history-panel');
+      if (panel && panel.style.display === 'flex') {
+        renderHistoryList();
+      }
+      console.log('Saved to localStorage');
     });
   }
 
@@ -441,7 +456,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape') {
       hideHistoryPanel();
     }
-    if (e.ctrlKey && e.key === 'p') {
+    if (e.ctrlKey && e.key === 'q') {
       e.preventDefault();
       const panel = document.getElementById('history-panel');
       if (panel && panel.style.display === 'flex') {
@@ -449,6 +464,10 @@ window.addEventListener('DOMContentLoaded', () => {
       } else {
         showHistoryPanel();
       }
+    }
+    if (e.ctrlKey && e.key === 'p') {
+      e.preventDefault();
+      speakSelectedText();
     }
   });
   
