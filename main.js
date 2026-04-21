@@ -9,28 +9,8 @@ const activeDownloads = new Map();
 let deeplinkingUrl = null;
 let historyEnabled = true;
 let browsingHistory = [];
-let historyFile;
 let keybindsFile;
 let blocklistFile;
-
-async function loadHistory() {
-  if (!historyFile) return;
-  try {
-    const content = await fsPromises.readFile(historyFile, 'utf8');
-    browsingHistory = JSON.parse(content || '[]');
-  } catch (e) {
-    browsingHistory = [];
-  }
-}
-
-async function saveHistory() {
-  if (!historyFile) return;
-  try {
-    await fsPromises.writeFile(historyFile, JSON.stringify(browsingHistory, null, 2), 'utf8');
-  } catch (err) {
-    console.error('saveHistory error', err);
-  }
-}
 
 function addToHistory(url, title) {
   if (!historyEnabled || !url || url.startsWith('javascript:') || url.startsWith('about:') || url.startsWith('data:')) return;
@@ -38,7 +18,6 @@ function addToHistory(url, title) {
   browsingHistory = browsingHistory.filter(h => h.url !== url);
   browsingHistory.unshift(entry);
   if (browsingHistory.length > 500) browsingHistory = browsingHistory.slice(0, 500);
-  saveHistory().catch(err => console.error('saveHistory error', err));
   if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('history-updated', browsingHistory);
 }
 
@@ -134,6 +113,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
       webviewTag: true,
       preload: path.join(__dirname, 'preload.js')
     }
@@ -327,6 +307,9 @@ function createWindow() {
       case 'toggle-theme':
         mainWindow.webContents.send('toggle-theme');
         break;
+      case 'toggle-history':
+        mainWindow.webContents.send('toggle-history');
+        break;
       case 'open-devtools':
         mainWindow.webContents.send('show-devtools');
         break;
@@ -349,6 +332,9 @@ function createWindow() {
       case 'open-blocker':
         mainWindow.webContents.send('open-blocker');
         break;
+      case 'open-split-view':
+        mainWindow.webContents.send('open-split-view');
+        break;
       case 'open-tabs':
         mainWindow.webContents.send('con');
         break;
@@ -364,6 +350,12 @@ function createWindow() {
       case 'close-tab':
         mainWindow.webContents.send('close-current-tab');
         break;
+      case 'undo-action':
+        mainWindow.webContents.send('undo-action');
+        break;
+      case 'text-to-speech':
+        mainWindow.webContents.send('text-to-speech');
+        break;
       case 'switch-tab-0':
       case 'switch-tab-1':
       case 'switch-tab-2':
@@ -373,6 +365,7 @@ function createWindow() {
       case 'switch-tab-6':
       case 'switch-tab-7':
       case 'switch-tab-8':
+      case 'switch-tab-9':
         const tabIndex = parseInt(action.replace('switch-tab-', ''));
         mainWindow.webContents.send('switch-to-tab', tabIndex);
         break;
@@ -519,8 +512,8 @@ ipcMain.on('check-tabs-count', (event, count) => {
 ipcMain.handle('get-history', () => browsingHistory);
 ipcMain.handle('toggle-history', () => { historyEnabled = !historyEnabled; return historyEnabled; });
 ipcMain.handle('is-history-enabled', () => historyEnabled);
-ipcMain.handle('clear-history', async () => { browsingHistory = []; await saveHistory(); return true; });
-ipcMain.handle('remove-history-item', async (event, url) => { browsingHistory = browsingHistory.filter(h => h.url !== url); await saveHistory(); return true; });
+ipcMain.handle('clear-history', () => { browsingHistory = []; return true; });
+ipcMain.handle('remove-history-item', (event, url) => { browsingHistory = browsingHistory.filter(h => h.url !== url); return true; });
 
 // Default keybinds (classic BaffyNet shortcuts)
 const defaultKeybinds = {
@@ -531,21 +524,27 @@ const defaultKeybinds = {
   search: { key: 'j', ctrl: true, shift: false, action: 'open-search' },
   privacy: { key: 'm', ctrl: true, shift: false, action: 'open-privacy' },
   defaultBrowser: { key: '7', ctrl: true, shift: false, action: 'set-default' },
-  addons: { key: 'e', ctrl: true, shift: true, action: 'open-addons' },
-  blocker: { key: 'b', ctrl: true, shift: false, action: 'open-blocker' },
-  tabs: { key: 'k', ctrl: true, shift: false, action: 'open-tabs' },
-  keybinds: { key: 'h', ctrl: true, shift: false, action: 'open-keybinds' },
-  newTab: { key: 't', ctrl: true, shift: false, action: 'new-tab' },
-  closeTab: { key: 'w', ctrl: true, shift: false, action: 'close-tab' },
-  switchTab1: { key: '1', ctrl: true, shift: false, action: 'switch-tab-0' },
-  switchTab2: { key: '2', ctrl: true, shift: false, action: 'switch-tab-1' },
-  switchTab3: { key: '3', ctrl: true, shift: false, action: 'switch-tab-2' },
-  switchTab4: { key: '4', ctrl: true, shift: false, action: 'switch-tab-3' },
-  switchTab5: { key: '5', ctrl: true, shift: false, action: 'switch-tab-4' },
-  switchTab6: { key: '6', ctrl: true, shift: false, action: 'switch-tab-5' },
-  switchTab7: { key: '7', ctrl: true, shift: false, action: 'switch-tab-6' },
-  switchTab8: { key: '8', ctrl: true, shift: false, action: 'switch-tab-7' },
-  switchTab9: { key: '9', ctrl: true, shift: false, action: 'switch-tab-8' }
+   addons: { key: 'e', ctrl: true, shift: true, action: 'open-addons' },
+   history: { key: 'e', ctrl: true, shift: false, action: 'toggle-history' },
+
+   tabs: { key: 'k', ctrl: true, shift: false, action: 'open-tabs' },
+   keybinds: { key: 'h', ctrl: true, shift: false, action: 'open-keybinds' },
+   newTab: { key: 't', ctrl: true, shift: false, action: 'new-tab' },
+   closeTab: { key: 'w', ctrl: true, shift: false, action: 'close-tab' },
+   splitView: { key: 'x', ctrl: true, shift: false, action: 'open-split-view' },
+switchTab0: { key: '0', ctrl: true, shift: false, action: 'switch-tab-0' },
+   switchTab1: { key: '1', ctrl: true, shift: false, action: 'switch-tab-1' },
+   switchTab2: { key: '2', ctrl: true, shift: false, action: 'switch-tab-2' },
+   switchTab3: { key: '3', ctrl: true, shift: false, action: 'switch-tab-3' },
+   switchTab4: { key: '4', ctrl: true, shift: false, action: 'switch-tab-4' },
+   switchTab5: { key: '5', ctrl: true, shift: false, action: 'switch-tab-5' },
+   switchTab6: { key: '6', ctrl: true, shift: false, action: 'switch-tab-6' },
+   switchTab7: { key: '7', ctrl: true, shift: false, action: 'switch-tab-7' },
+   switchTab8: { key: '8', ctrl: true, shift: false, action: 'switch-tab-8' },
+   switchTab9: { key: '9', ctrl: true, shift: false, action: 'switch-tab-9' },
+  reopenTab: { key: 't', ctrl: true, shift: true, action: 'undo-action' },
+blocker: { key: 'b', ctrl: true, shift: false, action: 'open-blocker' },
+    textToSpeech: { key: 'p', ctrl: true, shift: false, action: 'text-to-speech' }
 };
 
 let customKeybinds = {};
@@ -722,20 +721,10 @@ ipcMain.handle('is-site-blocked', (event, url) => {
 
 // Initialize blocker when app is ready
 app.whenReady().then(async () => {
-  historyFile = path.join(app.getPath('userData'), 'history.json');
   keybindsFile = path.join(app.getPath('userData'), 'keybinds.json');
   blocklistFile = path.join(app.getPath('userData'), 'blocklist.json');
   
   loadBlocklist();
   setupNavigationBlocker();
-  loadHistory().catch(() => {});
   loadKeybinds().catch(() => {});
-
-  // Set Firefox as default useragent for the entire session
-  const firefoxUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0';
-  session.defaultSession.setUserAgent(firefoxUA);
-  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
-    details.requestHeaders['User-Agent'] = firefoxUA;
-    callback({ requestHeaders: details.requestHeaders });
-  });
 });
